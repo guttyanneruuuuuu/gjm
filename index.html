@@ -6,85 +6,102 @@
 <title>Inverse Hunter — 食物連鎖を逆走する3Dアクション</title>
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>%F0%9F%90%AD</text></svg>">
 <style>
-  * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; user-select:none; }
-  html,body { width:100%; height:100%; overflow:hidden; background:#05080c; font-family:"Hiragino Kaku Gothic ProN","Yu Gothic",sans-serif; color:#e8e2d4; }
-  #game { position:fixed; inset:0; }
-  canvas { display:block; }
+  *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;user-select:none;-webkit-user-select:none;}
+  html,body{width:100%;height:100%;overflow:hidden;background:#05080c;
+    font-family:"Hiragino Kaku Gothic ProN","Yu Gothic","Segoe UI",sans-serif;color:#e8e2d4;}
+  #game{position:fixed;inset:0;}
+  canvas{display:block;}
 
-  /* ---- Title screen ---- */
-  #title { position:fixed; inset:0; z-index:50; display:flex; flex-direction:column; align-items:center; justify-content:center;
-    background:radial-gradient(circle at 50% 30%, #14202c 0%, #05080c 70%); text-align:center; padding:24px; }
-  #title h1 { font-size:clamp(34px,7vw,72px); letter-spacing:.18em; color:#f2e9d0; text-shadow:0 0 24px #c79b4a88;
-    font-weight:300; }
-  #title .sub { margin-top:10px; font-size:clamp(12px,2.4vw,18px); color:#8fb09c; letter-spacing:.25em; }
-  #title .tag { margin-top:28px; font-size:clamp(11px,2vw,15px); color:#b7a98a; font-style:italic; max-width:540px; line-height:1.7; opacity:.85;}
-  #title .chain { margin-top:30px; font-size:clamp(20px,4vw,34px); letter-spacing:.1em; }
-  #startBtn { margin-top:40px; padding:16px 54px; font-size:18px; letter-spacing:.3em; color:#0a0d12;
-    background:linear-gradient(135deg,#e7c878,#c79b4a); border:none; border-radius:40px; cursor:pointer;
-    box-shadow:0 0 30px #c79b4a55; transition:transform .15s, box-shadow .2s; }
-  #startBtn:hover { transform:scale(1.05); box-shadow:0 0 50px #c79b4a99; }
-  #title .hint { margin-top:26px; font-size:12px; color:#5d6b62; letter-spacing:.1em; line-height:1.8; }
+  /* ---------- Title ---------- */
+  #title{position:fixed;inset:0;z-index:50;display:flex;flex-direction:column;align-items:center;justify-content:center;
+    background:radial-gradient(circle at 50% 28%,#16242f 0%,#05080c 70%);text-align:center;padding:20px;}
+  #title h1{font-size:clamp(34px,7vw,74px);letter-spacing:.18em;color:#f2e9d0;text-shadow:0 0 26px #c79b4a99;font-weight:300;}
+  #title .sub{margin-top:10px;font-size:clamp(12px,2.4vw,18px);color:#8fb09c;letter-spacing:.25em;}
+  #title .chain{margin-top:26px;font-size:clamp(20px,4vw,34px);letter-spacing:.1em;}
+  #title .tag{margin-top:24px;font-size:clamp(11px,2vw,15px);color:#b7a98a;font-style:italic;max-width:560px;line-height:1.7;opacity:.85;}
+  #startBtn{margin-top:36px;padding:16px 56px;font-size:18px;letter-spacing:.3em;color:#0a0d12;
+    background:linear-gradient(135deg,#e7c878,#c79b4a);border:none;border-radius:40px;cursor:pointer;
+    box-shadow:0 0 30px #c79b4a55;transition:transform .15s,box-shadow .2s;}
+  #startBtn:hover{transform:scale(1.05);box-shadow:0 0 52px #c79b4a99;}
+  #title .hint{margin-top:24px;font-size:12px;color:#6d7b72;letter-spacing:.06em;line-height:1.9;}
+  #title .hint b{color:#bcae8c;font-weight:600;}
 
-  /* ---- HUD ---- */
-  #hud { position:fixed; inset:0; z-index:20; pointer-events:none; }
-  /* form indicator top-left */
-  #formBox { position:absolute; top:14px; left:14px; display:flex; gap:8px; align-items:center;
-    background:#0a0f14aa; padding:8px 14px; border-radius:30px; border:1px solid #2a3a30; backdrop-filter:blur(4px);}
-  #formEmoji { font-size:30px; line-height:1; }
-  #formName { font-size:14px; letter-spacing:.12em; color:#dfe7df; }
-  #formType { font-size:10px; color:#7f9486; letter-spacing:.1em; }
+  /* ---------- HUD ---------- */
+  #hud{position:fixed;inset:0;z-index:20;pointer-events:none;}
+  #formBox{position:absolute;top:12px;left:12px;display:flex;gap:9px;align-items:center;
+    background:#0a0f14bb;padding:8px 14px;border-radius:30px;border:1px solid #2a3a30;backdrop-filter:blur(5px);}
+  #formEmoji{font-size:30px;line-height:1;}
+  #formName{font-size:14px;letter-spacing:.1em;color:#dfe7df;}
+  #formType{font-size:10px;color:#7f9486;letter-spacing:.08em;}
 
-  /* instinct gauge (top-right) */
-  #instinctWrap { position:absolute; top:18px; right:16px; width:180px; }
-  #instinctLabel { font-size:10px; letter-spacing:.2em; color:#9fb0a4; text-align:right; margin-bottom:4px;}
-  #instinctBar { height:9px; background:#10171c; border-radius:6px; overflow:hidden; border:1px solid #2a3a30;}
-  #instinctFill { height:100%; width:100%; background:linear-gradient(90deg,#c79b4a,#f0d98a); transition:width .15s; }
+  #instinctWrap{position:absolute;top:16px;right:14px;width:190px;}
+  #instinctLabel{font-size:10px;letter-spacing:.2em;color:#9fb0a4;text-align:right;margin-bottom:4px;}
+  #instinctBar{height:10px;background:#10171c;border-radius:6px;overflow:hidden;border:1px solid #2a3a30;}
+  #instinctFill{height:100%;width:100%;background:linear-gradient(90deg,#c79b4a,#f0d98a);transition:width .12s;}
 
-  /* health (fur state) bottom-left text */
-  #healthWrap { position:absolute; left:16px; bottom:96px; width:160px; }
-  #healthLabel { font-size:10px; letter-spacing:.2em; color:#c08f8f; margin-bottom:4px;}
-  #healthBar { height:8px; background:#1c1012; border-radius:6px; overflow:hidden; border:1px solid #3a2a2a;}
-  #healthFill { height:100%; width:100%; background:linear-gradient(90deg,#8a3a3a,#d96b6b); transition:width .2s;}
+  #healthWrap{position:absolute;right:14px;top:48px;width:190px;}
+  #healthLabel{font-size:10px;letter-spacing:.2em;color:#c08f8f;text-align:right;margin-bottom:4px;}
+  #healthBar{height:10px;background:#1c1012;border-radius:6px;overflow:hidden;border:1px solid #3a2a2a;}
+  #healthFill{height:100%;width:100%;background:linear-gradient(90deg,#8a3a3a,#e07b7b);transition:width .18s;}
 
-  /* form selector wheel (center-bottom available silhouettes) */
-  #formWheel { position:absolute; left:50%; transform:translateX(-50%); top:14px; display:flex; gap:6px; z-index:21;}
-  .formChip { width:42px; height:42px; border-radius:12px; background:#0a0f14aa; border:1px solid #243029;
-    display:flex; align-items:center; justify-content:center; font-size:22px; opacity:.35; transition:.2s;
-    backdrop-filter:blur(3px); pointer-events:auto; cursor:pointer; position:relative;}
-  .formChip.unlocked { opacity:.7; }
-  .formChip.active { opacity:1; border-color:#e7c878; box-shadow:0 0 16px #c79b4a88; transform:scale(1.12);}
-  .formChip.locked::after { content:"🔒"; position:absolute; font-size:11px; bottom:-2px; right:-2px;}
-  .formChip .key { position:absolute; top:-7px; left:50%; transform:translateX(-50%); font-size:9px; color:#7f9486; background:#0a0f14; padding:0 4px; border-radius:4px;}
+  /* boss health bar (top center) */
+  #bossWrap{position:absolute;top:14px;left:50%;transform:translateX(-50%);width:min(54vw,520px);opacity:0;transition:opacity .35s;}
+  #bossName{font-size:12px;letter-spacing:.12em;color:#f0c0c0;text-align:center;margin-bottom:4px;text-shadow:0 0 8px #000;}
+  #bossBar{height:12px;background:#1a0c0c;border-radius:7px;overflow:hidden;border:1px solid #5a2a2a;}
+  #bossFill{height:100%;width:100%;background:linear-gradient(90deg,#b03030,#ff6b6b);transition:width .18s;}
 
-  /* objective / message banner */
-  #banner { position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); text-align:center;
-    font-size:clamp(20px,5vw,42px); letter-spacing:.1em; color:#f2e9d0; text-shadow:0 0 26px #000, 0 0 40px #c79b4a55;
-    opacity:0; transition:opacity .5s; pointer-events:none; max-width:90%;}
-  #subBanner { position:absolute; top:calc(50% + 44px); left:50%; transform:translateX(-50%); text-align:center;
-    font-size:clamp(12px,2.6vw,18px); color:#9fb0a4; letter-spacing:.15em; opacity:0; transition:opacity .5s;}
+  #formWheel{position:absolute;left:50%;transform:translateX(-50%);top:84px;display:flex;gap:6px;z-index:21;}
+  .formChip{width:44px;height:44px;border-radius:12px;background:#0a0f14bb;border:1px solid #243029;
+    display:flex;align-items:center;justify-content:center;font-size:22px;opacity:.32;transition:.2s;
+    backdrop-filter:blur(3px);pointer-events:auto;cursor:pointer;position:relative;}
+  .formChip.unlocked{opacity:.7;}
+  .formChip.active{opacity:1;border-color:#e7c878;box-shadow:0 0 16px #c79b4a99;transform:scale(1.14);}
+  .formChip.locked::after{content:"🔒";position:absolute;font-size:11px;bottom:-2px;right:-2px;}
+  .formChip .key{position:absolute;top:-7px;left:50%;transform:translateX(-50%);font-size:9px;color:#7f9486;background:#0a0f14;padding:0 4px;border-radius:4px;}
 
-  /* objective ticker top-center under wheel */
-  #objective { position:absolute; top:64px; left:50%; transform:translateX(-50%); font-size:12px; letter-spacing:.12em;
-    color:#bcae8c; background:#0a0f14aa; padding:6px 16px; border-radius:20px; border:1px solid #2a3a30; text-align:center; max-width:80%;}
-  #stageTag { position:absolute; top:64px; right:16px; font-size:11px; letter-spacing:.15em; color:#7f9486;}
+  #objective{position:absolute;top:140px;left:50%;transform:translateX(-50%);font-size:12px;letter-spacing:.1em;
+    color:#bcae8c;background:#0a0f14bb;padding:6px 16px;border-radius:20px;border:1px solid #2a3a30;text-align:center;max-width:80%;}
+  #senseTag{position:absolute;left:12px;top:54px;font-size:11px;color:#86a0c0;letter-spacing:.1em;opacity:0;transition:.3s;}
+  #comboTag{position:absolute;left:50%;bottom:120px;transform:translateX(-50%);font-size:clamp(16px,4vw,30px);
+    color:#ffd86b;letter-spacing:.06em;font-weight:700;opacity:0;text-shadow:0 0 14px #c79b4a;transition:opacity .2s;}
 
-  #senseTag { position:absolute; left:16px; top:64px; font-size:11px; color:#86a0c0; letter-spacing:.12em; opacity:0; transition:.3s;}
+  #banner{position:absolute;top:46%;left:50%;transform:translate(-50%,-50%);text-align:center;
+    font-size:clamp(20px,5vw,42px);letter-spacing:.08em;color:#f2e9d0;text-shadow:0 0 26px #000,0 0 40px #c79b4a55;
+    opacity:0;transition:opacity .5s;pointer-events:none;max-width:92%;}
+  #subBanner{position:absolute;top:calc(46% + 44px);left:50%;transform:translateX(-50%);text-align:center;
+    font-size:clamp(12px,2.6vw,18px);color:#9fb0a4;letter-spacing:.12em;opacity:0;transition:opacity .5s;max-width:90%;}
 
-  /* ---- mobile controls ---- */
-  #mobile { position:fixed; inset:0; z-index:30; pointer-events:none; display:none; }
-  #joy { position:absolute; left:26px; bottom:26px; width:130px; height:130px; border-radius:50%;
-    background:#0a0f1455; border:2px solid #ffffff22; pointer-events:auto; }
-  #joyKnob { position:absolute; left:50%; top:50%; width:56px; height:56px; margin:-28px 0 0 -28px; border-radius:50%;
-    background:#e7c87899; border:2px solid #ffffff44; }
-  #btns { position:absolute; right:24px; bottom:24px; pointer-events:none; }
-  .abtn { position:absolute; width:66px; height:66px; border-radius:50%; pointer-events:auto;
-    display:flex; align-items:center; justify-content:center; font-size:13px; font-weight:bold; color:#0a0d12;
-    border:2px solid #ffffff44; }
-  #btnA { right:0; bottom:64px; background:#d96b6bcc; }
-  #btnB { right:78px; bottom:18px; background:#6b9ad9cc; }
-  #btnY { right:84px; bottom:104px; background:#7bd98bcc; }
-  #rotateNote { position:fixed; inset:0; z-index:60; display:none; align-items:center; justify-content:center;
-    background:#05080c; color:#bcae8c; font-size:16px; letter-spacing:.2em; text-align:center; flex-direction:column; gap:14px;}
+  /* aim reticle */
+  #reticle{position:fixed;left:50%;top:50%;width:34px;height:34px;margin:-17px 0 0 -17px;z-index:22;pointer-events:none;
+    opacity:0;transition:opacity .15s;}
+  #reticle.show{opacity:.9;}
+  #reticle .ring{position:absolute;inset:0;border:2px solid #ffe066;border-radius:50%;box-shadow:0 0 8px #c79b4a;}
+  #reticle .dot{position:absolute;left:50%;top:50%;width:4px;height:4px;margin:-2px 0 0 -2px;background:#fff;border-radius:50%;}
+  #reticle.locked .ring{border-color:#ff6b6b;box-shadow:0 0 12px #ff6b6b;}
+
+  /* lock-on marker */
+  #lockMark{position:fixed;width:46px;height:46px;margin:-23px 0 0 -23px;z-index:22;pointer-events:none;opacity:0;
+    border:2px solid #ff6b6b;border-radius:8px;box-shadow:0 0 12px #ff6b6b88;transition:opacity .2s;}
+
+  /* ---------- Mobile ---------- */
+  #mobile{position:fixed;inset:0;z-index:30;pointer-events:none;display:none;}
+  #joy{position:absolute;left:24px;bottom:24px;width:140px;height:140px;border-radius:50%;
+    background:#0a0f1466;border:2px solid #ffffff24;pointer-events:auto;}
+  #joyKnob{position:absolute;left:50%;top:50%;width:60px;height:60px;margin:-30px 0 0 -30px;border-radius:50%;
+    background:#e7c87899;border:2px solid #ffffff44;}
+  #aimPad{position:absolute;right:0;bottom:0;width:55%;height:100%;pointer-events:auto;}
+  #btns{position:absolute;right:20px;bottom:20px;width:230px;height:200px;pointer-events:none;}
+  .abtn{position:absolute;border-radius:50%;pointer-events:auto;display:flex;align-items:center;justify-content:center;
+    font-size:12px;font-weight:bold;color:#0a0d12;border:2px solid #ffffff44;text-align:center;line-height:1.1;}
+  #btnA{right:6px;bottom:70px;width:74px;height:74px;background:#d96b6bdd;font-size:14px;}
+  #btnB{right:88px;bottom:26px;width:62px;height:62px;background:#6b9ad9dd;}
+  #btnJump{right:96px;bottom:108px;width:58px;height:58px;background:#7bd98bdd;}
+  #btnY{right:8px;bottom:156px;width:50px;height:50px;background:#c79b4add;font-size:11px;}
+  #btnLock{left:170px;bottom:96px;width:52px;height:52px;background:#b08bd9dd;font-size:11px;}
+
+  #rotateNote{position:fixed;inset:0;z-index:60;display:none;align-items:center;justify-content:center;
+    background:#05080c;color:#bcae8c;font-size:16px;letter-spacing:.2em;text-align:center;flex-direction:column;gap:14px;}
+  #fps{position:absolute;left:12px;bottom:12px;font-size:10px;color:#3d4b42;letter-spacing:.1em;}
 </style>
 </head>
 <body>
@@ -92,22 +109,30 @@
 
 <div id="hud">
   <div id="formBox"><span id="formEmoji">🐭</span><div><div id="formName">ネズミ</div><div id="formType">隠密・逃走型</div></div></div>
-  <div id="formWheel"></div>
-  <div id="objective">キツネから逃げ延びろ — 草むらに隠れて本能を回復</div>
-  <div id="stageTag">STAGE 01 — 草原の夜明け</div>
-  <div id="senseTag"></div>
   <div id="instinctWrap"><div id="instinctLabel">本能 INSTINCT</div><div id="instinctBar"><div id="instinctFill"></div></div></div>
   <div id="healthWrap"><div id="healthLabel">体力 VITALITY</div><div id="healthBar"><div id="healthFill"></div></div></div>
+  <div id="bossWrap"><div id="bossName"></div><div id="bossBar"><div id="bossFill"></div></div></div>
+  <div id="formWheel"></div>
+  <div id="objective">キツネを倒せ — 草むらに隠れて本能を回復し、隙を突く</div>
+  <div id="senseTag"></div>
+  <div id="comboTag"></div>
   <div id="banner"></div>
   <div id="subBanner"></div>
+  <div id="fps"></div>
 </div>
+
+<div id="reticle"><div class="ring"></div><div class="dot"></div></div>
+<div id="lockMark"></div>
 
 <div id="mobile">
   <div id="joy"><div id="joyKnob"></div></div>
+  <div id="aimPad"></div>
   <div id="btns">
     <div class="abtn" id="btnA">攻撃</div>
     <div class="abtn" id="btnB">スキル</div>
+    <div class="abtn" id="btnJump">跳</div>
     <div class="abtn" id="btnY">本能</div>
+    <div class="abtn" id="btnLock">ロック</div>
   </div>
 </div>
 
@@ -118,8 +143,11 @@
   <div class="tag">"You were prey. Now you are everything.<br>But everything has something to lose."</div>
   <button id="startBtn">START</button>
   <div class="hint">
-    PC：WASD 移動 / マウス 視点 / 左クリック 攻撃 / 右クリック スキル / E 本能 / 1–5 形態切替<br>
-    スマホ：横画面でプレイ・左スティック移動 / 右スワイプ視点 / A 攻撃 B スキル Y 本能
+    <b>PC</b>　移動 WASD / 視点 マウス（クリックで照準ロック）<br>
+    攻撃 左クリック・J / スキル 右クリック・K / ジャンプ Space<br>
+    照準ロックオン Q / 本能 E / ダッシュ Shift / 形態切替 1〜5<br>
+    <b>スマホ</b>　左スティック移動 / 右側ドラッグで視点・照準<br>
+    A 攻撃 / B スキル / 跳 ジャンプ / 本能 / ロック で敵ロックオン
   </div>
 </div>
 
@@ -128,99 +156,98 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script>
 /* =====================================================================
-   INVERSE HUNTER — single-file Three.js action game
-   Forms: Mouse / Fox / Snake / Eagle / Wolf  (+ human as final concept)
-   Core systems: transformation, instinct gauge, sense modes, stages,
-   weakness-based bosses, ecosystem ambience, emotion arc.
+   INVERSE HUNTER v2 — single-file Three.js action game
+   Major rewrite: aimable attacks, lock-on, fixed controls, dash,
+   projectile/melee combat, juicy feedback, better AI & visuals.
    ===================================================================== */
-const GAME = (()=>{ 'use strict';
+const GAME=(()=>{ 'use strict';
 let scene,camera,renderer,clock;
 const W=()=>innerWidth,H=()=>innerHeight;
 let running=false;
 
-/* ---------- FORM DEFINITIONS ---------- */
+/* ---------- FORMS ---------- */
 const FORMS={
-  mouse:{ key:'mouse', emoji:'🐭', name:'ネズミ', type:'隠密・逃走型', color:0x9a8f80,
-    speed:13, size:0.55, jump:7, instinctCost:0, fly:false,
-    sense:'超音波視覚', tint:0x2a1a55, unlocked:true,
-    ability:'狭所通過 / 真下から急所を突く', recover:'草むらに隠れる' },
-  fox:{ key:'fox', emoji:'🦊', name:'キツネ', type:'アジリティ型', color:0xc0602a,
-    speed:18, size:0.85, jump:10, instinctCost:30, fly:false,
-    sense:'嗅覚追跡', tint:0x3a2410, unlocked:false,
-    ability:'高速ダッシュ / フェイント', recover:'獲物を追尾して走る' },
-  snake:{ key:'snake', emoji:'🐍', name:'ニシキヘビ', type:'待機・締め付け型', color:0x4a7a3a,
-    speed:10, size:0.7, jump:4, instinctCost:30, fly:false,
-    sense:'熱源探知', tint:0x103a18, unlocked:false,
-    ability:'締め付け / 熱源で暗闇でも敵が視える', recover:'静止して待つ' },
-  eagle:{ key:'eagle', emoji:'🦅', name:'イヌワシ', type:'空中制圧型', color:0x6b5230,
-    speed:22, size:1.0, jump:0, instinctCost:30, fly:true,
-    sense:'超広域視野', tint:0x102030, unlocked:false,
-    ability:'飛行 / 急降下即死攻撃（真下が死角）', recover:'上昇気流に乗り滑空' },
-  wolf:{ key:'wolf', emoji:'🐺', name:'オオカミ', type:'群れ指揮型', color:0x707880,
-    speed:16, size:1.1, jump:9, instinctCost:30, fly:false,
-    sense:'広角暗視', tint:0x101820, unlocked:false,
-    ability:'群れコマンド / 遠吠え', recover:'遠吠えで群れに号令' },
+  mouse:{key:'mouse',emoji:'🐭',name:'ネズミ',type:'隠密・逃走型',color:0x9a8f80,
+    speed:14,size:0.55,jump:8,instinctCost:0,fly:false,ranged:false,
+    sense:'超音波視覚',tint:0x2a1a55,unlocked:true,atkCD:0.30,reach:3.2,dmg:7,
+    ability:'狭所通過 / 真下から急所を突く',recover:'草むらに隠れる'},
+  fox:{key:'fox',emoji:'🦊',name:'キツネ',type:'アジリティ型',color:0xc0602a,
+    speed:19,size:0.85,jump:11,instinctCost:25,fly:false,ranged:false,
+    sense:'嗅覚追跡',tint:0x3a2410,unlocked:false,atkCD:0.26,reach:3.6,dmg:10,
+    ability:'高速ダッシュ / 連続斬撃',recover:'獲物を追尾して走る'},
+  snake:{key:'snake',emoji:'🐍',name:'ニシキヘビ',type:'待機・締め付け型',color:0x4a7a3a,
+    speed:11,size:0.7,jump:5,instinctCost:25,fly:false,ranged:true,
+    sense:'熱源探知',tint:0x103a18,unlocked:false,atkCD:0.5,reach:24,dmg:14,
+    ability:'毒の射撃 / 熱源で暗闇でも敵が視える',recover:'静止して待つ'},
+  eagle:{key:'eagle',emoji:'🦅',name:'イヌワシ',type:'空中制圧型',color:0x6b5230,
+    speed:23,size:1.0,jump:0,instinctCost:25,fly:true,ranged:false,
+    sense:'超広域視野',tint:0x102030,unlocked:false,atkCD:0.4,reach:4.5,dmg:13,
+    ability:'飛行 / 急降下即死攻撃（真下が死角）',recover:'上昇気流に乗り滑空'},
+  wolf:{key:'wolf',emoji:'🐺',name:'オオカミ',type:'群れ指揮型',color:0x808890,
+    speed:17,size:1.1,jump:10,instinctCost:25,fly:false,ranged:false,
+    sense:'広角暗視',tint:0x101820,unlocked:false,atkCD:0.34,reach:4.2,dmg:15,
+    ability:'群れコマンド / 遠吠え衝撃波',recover:'遠吠えで群れに号令'},
 };
 const ORDER=['mouse','fox','snake','eagle','wolf'];
 const KEYMAP={'1':'mouse','2':'fox','3':'snake','4':'eagle','5':'wolf'};
 
 /* ---------- STAGES ---------- */
 const STAGES=[
- { id:1, name:'草原の夜明け', tag:'STAGE 01 — 草原の夜明け',
-   obj:'キツネを倒せ — 草むらに隠れ本能を回復し、隙を突く',
-   ground:0x2f4a32, fog:0x14202c, sky:0x14202c,
-   boss:{form:'fox', emoji:'🦊', name:'キツネ群れ長', hp:60, weakness:'mouse',
-         tip:'弱点：ネズミ形態で真下/背後から急所を突くと大ダメージ', speed:9, color:0xc0602a, size:1.5},
-   unlock:'fox', emotion:'恐怖 → 解放感' },
- { id:2, name:'湿地のヘビ王国', tag:'STAGE 02 — 湿地のヘビ王国',
-   obj:'ヘビ女王を討て — キツネの速さで翻弄しろ',
-   ground:0x24382e, fog:0x12201a, sky:0x12201a,
-   boss:{form:'snake', emoji:'🐍', name:'ヘビ女王', hp:90, weakness:'fox',
-         tip:'弱点：地上の熱を感知できない。キツネの速攻が刺さる', speed:6, color:0x4a7a3a, size:1.8},
-   unlock:'snake', emotion:'戦略的思考' },
- { id:3, name:'断崖のワシの縄張り', tag:'STAGE 03 — 断崖のワシの縄張り',
-   obj:'ワシ王を討て — 真下の死角を突け',
-   ground:0x3a342a, fog:0x101824, sky:0x16202e,
-   boss:{form:'eagle', emoji:'🦅', name:'ワシ王', hp:120, weakness:'mouse',
-         tip:'弱点：真下180度が死角。ネズミで真下から接近せよ', speed:13, color:0x6b5230, size:2.0},
-   unlock:'eagle', emotion:'全能感・爽快感' },
- { id:4, name:'森のオオカミ群れ', tag:'STAGE 04 — 森のオオカミ群れ',
-   obj:'オオカミ群れ長を討て — ワシで偵察、ヘビで首魁へ',
-   ground:0x223024, fog:0x0e1812, sky:0x12201a,
-   boss:{form:'wolf', emoji:'🐺', name:'オオカミ群れ長', hp:150, weakness:'snake',
-         tip:'弱点：群れが分断されると弱体化。ヘビで締め付けろ', speed:14, color:0x707880, size:1.9},
-   unlock:'wolf', emotion:'仲間との連帯感' },
- { id:5, name:'人間の村（転換点）', tag:'STAGE 05 — 人間の村',
-   obj:'人間文明の脅威 — 仲間を守り、選択せよ',
-   ground:0x40382c, fog:0x1a1610, sky:0x241c12,
-   boss:{form:'human', emoji:'🧍', name:'村長', hp:200, weakness:'wolf',
-         tip:'弱点：火と群れの連携。全形態を統合せよ', speed:11, color:0x9a7050, size:2.0},
-   unlock:null, emotion:'重さ・道徳的ジレンマ', choice:true },
- { id:6, name:'文明の心臓部（最終章）', tag:'STAGE 06 — 文明の心臓部',
-   obj:'真のボス — 生態系を破壊するシステムと対峙せよ',
-   ground:0x2a2a32, fog:0x0a0a12, sky:0x12101a,
-   boss:{form:'system', emoji:'⚡', name:'破壊のシステム', hp:300, weakness:'all',
-         tip:'弱点：全形態を切り替えながら核に攻撃を当て続けろ', speed:8, color:0x9a3acc, size:3.0},
-   unlock:null, emotion:'使命感・カタルシス' },
+ {id:1,name:'草原の夜明け',tag:'STAGE 01 — 草原の夜明け',
+  obj:'キツネを倒せ — 草むらに隠れ本能を回復し、隙を突く',
+  ground:0x2f4a32,fog:0x14202c,sky:0x14202c,
+  boss:{form:'fox',emoji:'🦊',name:'キツネ群れ長',hp:80,weakness:'mouse',
+        tip:'弱点：ネズミ形態で真下/背後から急所を突くと×3ダメージ',speed:9,color:0xc0602a,size:1.5,style:'chase'},
+  unlock:'fox',emotion:'恐怖 → 解放感'},
+ {id:2,name:'湿地のヘビ王国',tag:'STAGE 02 — 湿地のヘビ王国',
+  obj:'ヘビ女王を討て — キツネの速さで翻弄しろ',
+  ground:0x24382e,fog:0x12201a,sky:0x12201a,
+  boss:{form:'snake',emoji:'🐍',name:'ヘビ女王',hp:120,weakness:'fox',
+        tip:'弱点：地上の熱を感知できない。キツネの速攻が×3',speed:6,color:0x4a7a3a,size:1.8,style:'ranged'},
+  unlock:'snake',emotion:'戦略的思考'},
+ {id:3,name:'断崖のワシの縄張り',tag:'STAGE 03 — 断崖のワシの縄張り',
+  obj:'ワシ王を討て — 真下の死角を突け',
+  ground:0x3a342a,fog:0x101824,sky:0x16202e,
+  boss:{form:'eagle',emoji:'🦅',name:'ワシ王',hp:160,weakness:'mouse',
+        tip:'弱点：真下180度が死角。ネズミで真下から攻撃せよ',speed:14,color:0x6b5230,size:2.0,style:'dive'},
+  unlock:'eagle',emotion:'全能感・爽快感'},
+ {id:4,name:'森のオオカミ群れ',tag:'STAGE 04 — 森のオオカミ群れ',
+  obj:'オオカミ群れ長を討て — ヘビで首魁を締め付けろ',
+  ground:0x223024,fog:0x0e1812,sky:0x12201a,
+  boss:{form:'wolf',emoji:'🐺',name:'オオカミ群れ長',hp:200,weakness:'snake',
+        tip:'弱点：群れが分断されると弱体化。ヘビの射撃が×3',speed:15,color:0x808890,size:1.9,style:'pack'},
+  unlock:'wolf',emotion:'仲間との連帯感'},
+ {id:5,name:'人間の村（転換点）',tag:'STAGE 05 — 人間の村',
+  obj:'人間文明の脅威 — 仲間を守り、選択せよ',
+  ground:0x40382c,fog:0x1a1610,sky:0x241c12,
+  boss:{form:'human',emoji:'🧍',name:'村長',hp:260,weakness:'wolf',
+        tip:'弱点：火と群れの連携。オオカミの遠吠え衝撃波が刺さる',speed:11,color:0x9a7050,size:2.0,style:'chase'},
+  unlock:null,emotion:'重さ・道徳的ジレンマ',choice:true},
+ {id:6,name:'文明の心臓部（最終章）',tag:'STAGE 06 — 文明の心臓部',
+  obj:'真のボス — 生態系を破壊するシステムと対峙せよ',
+  ground:0x2a2a32,fog:0x0a0a12,sky:0x12101a,
+  boss:{form:'system',emoji:'⚡',name:'破壊のシステム',hp:380,weakness:'all',
+        tip:'弱点：全形態を切り替えながら核に攻撃を当て続けろ',speed:8,color:0x9a3acc,size:3.0,style:'orbit'},
+  unlock:null,emotion:'使命感・カタルシス'},
 ];
 
 /* ---------- STATE ---------- */
 const S={
-  stageIdx:0, form:'mouse', instinct:100, vitality:100,
-  player:null, playerVel:new THREE.Vector3(), grounded:true, vy:0,
-  yaw:0, pitch:-0.25, camDist:9,
-  boss:null, bossMesh:null, enemies:[], hideSpots:[], allies:[],
-  particles:null, senseMode:false, attackCD:0, skillCD:0, hurtCD:0,
-  bossSpawned:false, stageClear:false, choiceMade:null, transforming:0,
-  shards:0, killStreak:0,
+  stageIdx:0,form:'mouse',instinct:100,vitality:100,
+  player:null,vy:0,grounded:true,
+  yaw:0,pitch:-0.22,camDist:9,
+  boss:null,bossMesh:null,enemies:[],hideSpots:[],allies:[],projectiles:[],fx:[],
+  particles:null,senseMode:false,attackCD:0,skillCD:0,hurtCD:0,dashCD:0,dashT:0,
+  bossSpawned:false,stageClear:false,choiceMade:null,transforming:0,
+  shards:0,combo:0,comboTimer:0,lockOn:null,shake:0,sun:null,territory:null,
 };
 const keys={};
-const input={mx:0,my:0,fwd:0,strafe:0, look:{x:0,y:0}, attack:false, skill:false, instinct:false};
+const input={fwd:0,strafe:0,attack:false,skill:false,instinct:false,jump:false,dash:false};
 
 /* ---------- INIT ---------- */
 function init(){
   scene=new THREE.Scene();
-  camera=new THREE.PerspectiveCamera(60,W()/H(),0.1,500);
+  camera=new THREE.PerspectiveCamera(62,W()/H(),0.1,600);
   renderer=new THREE.WebGLRenderer({antialias:true});
   renderer.setSize(W(),H());
   renderer.setPixelRatio(Math.min(devicePixelRatio,2));
@@ -233,218 +260,197 @@ function init(){
   bindControls();
   detectMobile();
 }
-function onResize(){ camera.aspect=W()/H(); camera.updateProjectionMatrix(); renderer.setSize(W(),H()); detectMobile(); }
+function onResize(){camera.aspect=W()/H();camera.updateProjectionMatrix();renderer.setSize(W(),H());detectMobile();}
 
 /* ---------- MOBILE ---------- */
 let isMobile=false;
 function detectMobile(){
   isMobile=/Mobi|Android|iPhone|iPad/i.test(navigator.userAgent)||('ontouchstart'in window&&innerWidth<1024);
   document.getElementById('mobile').style.display=isMobile?'block':'none';
-  const rot=document.getElementById('rotateNote');
-  rot.style.display=(isMobile&&innerHeight>innerWidth)?'flex':'none';
+  document.getElementById('rotateNote').style.display=(isMobile&&innerHeight>innerWidth)?'flex':'none';
 }
 
-/* ---------- WORLD BUILD ---------- */
+/* ---------- WORLD ---------- */
 function clearWorld(){
-  while(scene.children.length) scene.remove(scene.children[0]);
-  S.enemies=[]; S.hideSpots=[]; S.allies=[]; S.bossMesh=null; S.boss=null;
+  while(scene.children.length)scene.remove(scene.children[0]);
+  S.enemies=[];S.hideSpots=[];S.allies=[];S.bossMesh=null;S.boss=null;
+  S.projectiles=[];S.fx=[];S.lockOn=null;
 }
 function buildStage(){
   clearWorld();
   const st=STAGES[S.stageIdx];
-  scene.fog=new THREE.Fog(st.fog,30,160);
+  scene.fog=new THREE.Fog(st.fog,34,180);
   scene.background=new THREE.Color(st.sky);
 
-  // lights — dynamic time of day feel
-  const hemi=new THREE.HemisphereLight(0xbfd4e6,st.ground,0.55); scene.add(hemi);
-  const sun=new THREE.DirectionalLight(0xffe9c2,0.9);
-  sun.position.set(40,70,30); sun.castShadow=true;
-  sun.shadow.mapSize.set(1024,1024); sun.shadow.camera.far=200;
-  sun.shadow.camera.left=-90;sun.shadow.camera.right=90;sun.shadow.camera.top=90;sun.shadow.camera.bottom=-90;
-  scene.add(sun); S.sun=sun;
-  scene.add(new THREE.AmbientLight(0x33404a,0.4));
+  const hemi=new THREE.HemisphereLight(0xbfd4e6,st.ground,0.6);scene.add(hemi);
+  const sun=new THREE.DirectionalLight(0xffe9c2,1.0);
+  sun.position.set(40,80,30);sun.castShadow=true;
+  sun.shadow.mapSize.set(1024,1024);sun.shadow.camera.far=240;
+  sun.shadow.camera.left=-100;sun.shadow.camera.right=100;sun.shadow.camera.top=100;sun.shadow.camera.bottom=-100;
+  scene.add(sun);S.sun=sun;
+  scene.add(new THREE.AmbientLight(0x33404a,0.45));
 
-  // ground
-  const gMat=new THREE.MeshStandardMaterial({color:st.ground,roughness:.95});
-  const ground=new THREE.Mesh(new THREE.CircleGeometry(120,64),gMat);
-  ground.rotation.x=-Math.PI/2; ground.receiveShadow=true; scene.add(ground);
+  const gMat=new THREE.MeshStandardMaterial({color:st.ground,roughness:.96});
+  const ground=new THREE.Mesh(new THREE.CircleGeometry(130,64),gMat);
+  ground.rotation.x=-Math.PI/2;ground.receiveShadow=true;scene.add(ground);
 
-  // territory roots (grows with allies) — concentric ring
-  S.territory=new THREE.Group(); scene.add(S.territory);
+  S.territory=new THREE.Group();scene.add(S.territory);
 
-  // scenery — rocks/trees depending on stage
   const sceneryColor=[0x3a3a3a,0x2a3a2a,0x55504a,0x223018,0x504434,0x3a3a44][S.stageIdx];
-  for(let i=0;i<70;i++){
-    const r=8+Math.random()*100, a=Math.random()*Math.PI*2;
+  for(let i=0;i<74;i++){
+    const r=10+Math.random()*104,a=Math.random()*Math.PI*2;
     const h=1+Math.random()*(S.stageIdx===2?9:4);
-    const geo = (S.stageIdx===2||S.stageIdx===5) ? new THREE.ConeGeometry(0.6+Math.random(),h,5)
-              : new THREE.DodecahedronGeometry(0.6+Math.random()*1.4);
-    const m=new THREE.Mesh(geo,new THREE.MeshStandardMaterial({color:sceneryColor,roughness:1}));
-    m.position.set(Math.cos(a)*r, h/2*0.6, Math.sin(a)*r);
-    m.castShadow=true; m.receiveShadow=true; scene.add(m);
+    const geo=(S.stageIdx===2||S.stageIdx===5)?new THREE.ConeGeometry(0.6+Math.random(),h,5)
+             :new THREE.DodecahedronGeometry(0.6+Math.random()*1.4);
+    const m=new THREE.Mesh(geo,new THREE.MeshStandardMaterial({color:sceneryColor,roughness:1,flatShading:true}));
+    m.position.set(Math.cos(a)*r,h/2*0.6,Math.sin(a)*r);
+    m.castShadow=true;m.receiveShadow=true;scene.add(m);
   }
-  // hide spots (grass clumps) — for mouse instinct recovery
-  for(let i=0;i<16;i++){
-    const r=6+Math.random()*70, a=Math.random()*Math.PI*2;
+  for(let i=0;i<18;i++){
+    const r=6+Math.random()*74,a=Math.random()*Math.PI*2;
     const g=new THREE.Group();
     for(let b=0;b<6;b++){
       const blade=new THREE.Mesh(new THREE.ConeGeometry(0.12,1.4,4),
         new THREE.MeshStandardMaterial({color:0x4a7a3a,roughness:1}));
       blade.position.set((Math.random()-.5)*1.2,0.7,(Math.random()-.5)*1.2);
-      blade.rotation.z=(Math.random()-.5)*.4; g.add(blade);
+      blade.rotation.z=(Math.random()-.5)*.4;g.add(blade);
     }
-    g.position.set(Math.cos(a)*r,0,Math.sin(a)*r); g.userData.hide=true;
-    scene.add(g); S.hideSpots.push(g);
+    g.position.set(Math.cos(a)*r,0,Math.sin(a)*r);g.userData.hide=true;
+    scene.add(g);S.hideSpots.push(g);
   }
 
-  // player
-  S.player=buildCreature(FORMS[S.form]); scene.add(S.player);
+  S.player=buildCreature(FORMS[S.form]);scene.add(S.player);
   S.player.position.set(0,FORMS[S.form].size,0);
-
-  // wandering prey/predators (ecosystem ambience)
   spawnAmbient();
-
-  // particles (spores/dust)
   buildParticles();
-
-  S.bossSpawned=false; S.stageClear=false; S.choiceMade=null;
+  S.bossSpawned=false;S.stageClear=false;S.choiceMade=null;
+  document.getElementById('bossWrap').style.opacity=0;
   applySenseColor();
 }
 
 function buildCreature(form,scaleMul=1){
   const g=new THREE.Group();
   const s=form.size*scaleMul;
-  const mat=new THREE.MeshStandardMaterial({color:form.color,roughness:.8,flatShading:true});
-  // body
+  const mat=new THREE.MeshStandardMaterial({color:form.color,roughness:.75,flatShading:true});
+  g.userData.mat=mat;
   let body;
   if(form.key==='snake'){
-    body=new THREE.Mesh(new THREE.CapsuleGeometry(s*0.35,s*2.2,4,8),mat);
-    body.rotation.z=Math.PI/2;
+    body=new THREE.Mesh(new THREE.CapsuleGeometry(s*0.35,s*2.2,4,8),mat);body.rotation.z=Math.PI/2;
+  } else if(form.key==='system'){
+    body=new THREE.Mesh(new THREE.IcosahedronGeometry(s*0.8,1),mat);
   } else {
-    body=new THREE.Mesh(new THREE.SphereGeometry(s*0.6,10,8),mat);
-    body.scale.set(1.4,0.9,1);
+    body=new THREE.Mesh(new THREE.SphereGeometry(s*0.6,12,9),mat);body.scale.set(1.45,0.9,1);
   }
-  body.castShadow=true; g.add(body);
-  // head
-  const head=new THREE.Mesh(new THREE.SphereGeometry(s*0.38,8,8),mat);
-  head.position.set(s*0.9,s*0.25,0); head.castShadow=true; g.add(head);
-  // eyes (instinct gauge color)
+  body.castShadow=true;g.add(body);g.userData.body=body;
+  const head=new THREE.Mesh(new THREE.SphereGeometry(s*0.38,9,8),mat);
+  head.position.set(s*0.9,s*0.25,0);head.castShadow=true;g.add(head);
   const eyeMat=new THREE.MeshBasicMaterial({color:0xf0d98a});
-  const e1=new THREE.Mesh(new THREE.SphereGeometry(s*0.1,6,6),eyeMat);
-  const e2=e1.clone();
-  e1.position.set(s*1.15,s*0.4,s*0.18); e2.position.set(s*1.15,s*0.4,-s*0.18);
-  g.add(e1); g.add(e2); g.userData.eyes=[e1,e2]; g.userData.eyeMat=eyeMat;
-  // ears / features
+  const e1=new THREE.Mesh(new THREE.SphereGeometry(s*0.1,6,6),eyeMat),e2=e1.clone();
+  e1.position.set(s*1.15,s*0.4,s*0.18);e2.position.set(s*1.15,s*0.4,-s*0.18);
+  g.add(e1);g.add(e2);g.userData.eyeMat=eyeMat;
   if(form.key==='mouse'||form.key==='fox'||form.key==='wolf'){
     const earGeo=new THREE.ConeGeometry(s*0.18,s*0.4,4);
-    const ear1=new THREE.Mesh(earGeo,mat), ear2=new THREE.Mesh(earGeo,mat);
-    ear1.position.set(s*0.95,s*0.7,s*0.2); ear2.position.set(s*0.95,s*0.7,-s*0.2);
-    g.add(ear1); g.add(ear2);
+    const ear1=new THREE.Mesh(earGeo,mat),ear2=new THREE.Mesh(earGeo,mat);
+    ear1.position.set(s*0.95,s*0.7,s*0.2);ear2.position.set(s*0.95,s*0.7,-s*0.2);g.add(ear1);g.add(ear2);
   }
-  // wings for eagle
   if(form.key==='eagle'){
     const wGeo=new THREE.BoxGeometry(s*0.2,s*0.1,s*2.4);
-    const w1=new THREE.Mesh(wGeo,mat), w2=new THREE.Mesh(wGeo,mat);
-    w1.position.set(0,s*0.3,s*1.2); w2.position.set(0,s*0.3,-s*1.2);
-    g.add(w1); g.add(w2); g.userData.wings=[w1,w2];
+    const w1=new THREE.Mesh(wGeo,mat),w2=new THREE.Mesh(wGeo,mat);
+    w1.position.set(0,s*0.3,s*1.2);w2.position.set(0,s*0.3,-s*1.2);g.add(w1);g.add(w2);g.userData.wings=[w1,w2];
   }
-  // legs (simple) for non-snake
-  if(form.key!=='snake'&&form.key!=='eagle'){
+  if(form.key!=='snake'&&form.key!=='eagle'&&form.key!=='system'){
     for(let i=0;i<4;i++){
       const leg=new THREE.Mesh(new THREE.CylinderGeometry(s*0.08,s*0.08,s*0.6,5),mat);
-      leg.position.set((i<2?0.5:-0.4)*s,-s*0.4,(i%2?0.3:-0.3)*s);
-      leg.userData.leg=i; g.add(leg);
+      leg.position.set((i<2?0.5:-0.4)*s,-s*0.4,(i%2?0.3:-0.3)*s);leg.userData.leg=i;g.add(leg);
     }
   }
-  // tail
-  const tail=new THREE.Mesh(new THREE.ConeGeometry(s*0.12,s*1.1,5),mat);
-  tail.position.set(-s*0.9,s*0.1,0); tail.rotation.z=Math.PI/2.3; g.add(tail);
-  g.userData.form=form.key; g.userData.size=s;
+  if(form.key!=='system'){
+    const tail=new THREE.Mesh(new THREE.ConeGeometry(s*0.12,s*1.1,5),mat);
+    tail.position.set(-s*0.9,s*0.1,0);tail.rotation.z=Math.PI/2.3;g.add(tail);
+  }
+  g.userData.form=form.key;g.userData.size=s;
   return g;
 }
 
 function spawnAmbient(){
-  // small wandering creatures = ecosystem
   const types=[FORMS.mouse,FORMS.fox];
-  for(let i=0;i<7;i++){
+  for(let i=0;i<8;i++){
     const f=types[Math.floor(Math.random()*types.length)];
     const c=buildCreature(f,0.8);
-    const r=20+Math.random()*60,a=Math.random()*Math.PI*2;
+    const r=22+Math.random()*64,a=Math.random()*Math.PI*2;
     c.position.set(Math.cos(a)*r,f.size*0.8,Math.sin(a)*r);
-    c.userData.ambient=true; c.userData.dir=Math.random()*Math.PI*2; c.userData.spd=2+Math.random()*3;
-    c.userData.form=f.key;
-    scene.add(c); S.enemies.push(c);
+    c.userData.ambient=true;c.userData.dir=Math.random()*Math.PI*2;c.userData.spd=2+Math.random()*3;
+    c.userData.form=f.key;c.userData.hp=14;
+    scene.add(c);S.enemies.push(c);
   }
 }
 
 function buildParticles(){
-  const N=1200; const geo=new THREE.BufferGeometry();
+  const N=1100;const geo=new THREE.BufferGeometry();
   const pos=new Float32Array(N*3);
-  for(let i=0;i<N;i++){ pos[i*3]=(Math.random()-.5)*200; pos[i*3+1]=Math.random()*40; pos[i*3+2]=(Math.random()-.5)*200; }
+  for(let i=0;i<N;i++){pos[i*3]=(Math.random()-.5)*220;pos[i*3+1]=Math.random()*42;pos[i*3+2]=(Math.random()-.5)*220;}
   geo.setAttribute('position',new THREE.BufferAttribute(pos,3));
-  const mat=new THREE.PointsMaterial({color:0xbfd6c0,size:0.18,transparent:true,opacity:0.5});
-  S.particles=new THREE.Points(geo,mat); scene.add(S.particles);
+  const mat=new THREE.PointsMaterial({color:0xbfd6c0,size:0.18,transparent:true,opacity:0.45});
+  S.particles=new THREE.Points(geo,mat);scene.add(S.particles);
 }
 
-/* ---------- SENSE MODE color grading ---------- */
+/* ---------- SENSE ---------- */
 function applySenseColor(){
   const f=FORMS[S.form];
   if(S.senseMode){
     scene.background=new THREE.Color(f.tint);
-    if(scene.fog) scene.fog.color=new THREE.Color(f.tint);
-    document.getElementById('senseTag').style.opacity=1;
-    document.getElementById('senseTag').textContent='SENSE MODE — '+f.sense;
+    if(scene.fog)scene.fog.color=new THREE.Color(f.tint);
+    const t=document.getElementById('senseTag');t.style.opacity=1;t.textContent='SENSE MODE — '+f.sense;
   } else {
     const st=STAGES[S.stageIdx];
     scene.background=new THREE.Color(st.sky);
-    if(scene.fog) scene.fog.color=new THREE.Color(st.fog);
+    if(scene.fog)scene.fog.color=new THREE.Color(st.fog);
     document.getElementById('senseTag').style.opacity=0;
   }
 }
 
 /* ---------- TRANSFORM ---------- */
 function transform(target){
-  if(target===S.form) { S.senseMode=!S.senseMode; applySenseColor(); return; }
+  if(target===S.form){S.senseMode=!S.senseMode;applySenseColor();return;}
   const f=FORMS[target];
-  if(!f||!f.unlocked) { flashBanner('🔒 まだ解放されていない形態', f?('「'+f.name+'」のボスを倒せ'):''); return; }
-  if(S.instinct<f.instinctCost && target!=='mouse'){ flashBanner('本能が足りない','その形態らしい行動でゲージを回復せよ'); return; }
-  if(target!=='mouse') S.instinct=Math.max(0,S.instinct-f.instinctCost);
+  if(!f||!f.unlocked){flashBanner('🔒 まだ解放されていない形態',f?('「'+f.name+'」のボスを倒せ'):'');return;}
+  if(S.instinct<f.instinctCost&&target!=='mouse'){flashBanner('本能が足りない','その形態らしい行動でゲージを回復せよ');return;}
+  if(target!=='mouse')S.instinct=Math.max(0,S.instinct-f.instinctCost);
   S.form=target;
-  // rebuild player mesh (morph effect)
-  const pos=S.player.position.clone();
+  const pos=S.player.position.clone();const rot=S.player.rotation.y;
   scene.remove(S.player);
-  S.player=buildCreature(f); S.player.position.copy(pos); scene.add(S.player);
-  S.transforming=0.6; // morph slow-mo timer
-  S.senseMode=false; applySenseColor();
+  S.player=buildCreature(f);S.player.position.copy(pos);S.player.rotation.y=rot;scene.add(S.player);
+  S.transforming=0.5;S.senseMode=false;applySenseColor();
+  spawnHit(pos,0xe7c878,true,2);
   updateHUD();
-  // brief slowmotion handled in loop via S.transforming
 }
 
 /* ---------- BOSS ---------- */
 function spawnBoss(){
-  const st=STAGES[S.stageIdx]; const b=st.boss;
-  S.boss={...b, maxhp:b.hp, hp:b.hp, cd:0, dir:0};
+  const st=STAGES[S.stageIdx];const b=st.boss;
+  S.boss={...b,maxhp:b.hp,hp:b.hp,cd:1.0,t:0};
   const form={key:b.form,emoji:b.emoji,name:b.name,color:b.color,size:b.size};
   S.bossMesh=buildCreature(form);
-  S.bossMesh.position.set(0,b.size,-26);
+  S.bossMesh.position.set(0,b.style==='dive'?10:b.size,-28);
   S.bossMesh.userData.boss=true;
   scene.add(S.bossMesh);
   S.bossSpawned=true;
+  document.getElementById('bossWrap').style.opacity=1;
+  document.getElementById('bossName').textContent=b.emoji+' '+b.name;
+  document.getElementById('bossFill').style.width='100%';
   flashBanner(b.emoji+' '+b.name+' 出現',b.tip);
   setObjective(b.tip);
+  S.lockOn=S.bossMesh;
 }
 
 /* ---------- HUD ---------- */
 function buildWheel(){
-  const w=document.getElementById('formWheel'); w.innerHTML='';
+  const w=document.getElementById('formWheel');w.innerHTML='';
   ORDER.forEach((k,i)=>{
-    const f=FORMS[k];
-    const d=document.createElement('div');
+    const f=FORMS[k];const d=document.createElement('div');
     d.className='formChip'+(f.unlocked?' unlocked':' locked')+(k===S.form?' active':'');
     d.innerHTML=f.emoji+'<span class="key">'+(i+1)+'</span>';
-    d.dataset.form=k;
-    d.onclick=()=>transform(k);
-    w.appendChild(d);
+    d.dataset.form=k;d.onclick=()=>transform(k);w.appendChild(d);
   });
 }
 function refreshWheel(){
@@ -460,244 +466,304 @@ function updateHUD(){
   document.getElementById('formType').textContent=f.type;
   document.getElementById('instinctFill').style.width=S.instinct+'%';
   document.getElementById('healthFill').style.width=S.vitality+'%';
-  document.getElementById('stageTag').textContent=STAGES[S.stageIdx].tag;
   refreshWheel();
 }
-function setObjective(t){ document.getElementById('objective').textContent=t; }
+function setObjective(t){document.getElementById('objective').textContent=t;}
 let bannerTO;
 function flashBanner(main,sub,dur=2600){
-  const b=document.getElementById('banner'), s=document.getElementById('subBanner');
-  b.textContent=main; s.textContent=sub||'';
-  b.style.opacity=1; s.style.opacity=sub?1:0;
-  clearTimeout(bannerTO);
-  bannerTO=setTimeout(()=>{b.style.opacity=0;s.style.opacity=0;},dur);
+  const b=document.getElementById('banner'),s=document.getElementById('subBanner');
+  b.textContent=main;s.textContent=sub||'';b.style.opacity=1;s.style.opacity=sub?1:0;
+  clearTimeout(bannerTO);bannerTO=setTimeout(()=>{b.style.opacity=0;s.style.opacity=0;},dur);
+}
+function showCombo(){
+  const c=document.getElementById('comboTag');
+  if(S.combo>=2){c.textContent=S.combo+' COMBO';c.style.opacity=1;}
+  else c.style.opacity=0;
 }
 
 /* ---------- CONTROLS ---------- */
 function bindControls(){
   addEventListener('keydown',e=>{
-    keys[e.key.toLowerCase()]=true;
-    if(KEYMAP[e.key]) transform(KEYMAP[e.key]);
-    if(e.key.toLowerCase()==='e') input.instinct=true;
+    const k=e.key.toLowerCase();keys[k]=true;
+    if(KEYMAP[e.key])transform(KEYMAP[e.key]);
+    if(k==='e')input.instinct=true;
+    if(k==='q')toggleLock();
+    if(k==='j'){input.attack=true;}
+    if(k==='k'){input.skill=true;}
+    if(k===' ')e.preventDefault();
   });
-  addEventListener('keyup',e=>{ keys[e.key.toLowerCase()]=false; if(e.key.toLowerCase()==='e') input.instinct=false; });
+  addEventListener('keyup',e=>{
+    const k=e.key.toLowerCase();keys[k]=false;
+    if(k==='e')input.instinct=false;
+    if(k==='j')input.attack=false;
+    if(k==='k')input.skill=false;
+  });
 
-  // mouse look (pointer lock on canvas)
-  renderer.domElement.addEventListener('click',()=>{ if(!isMobile&&running) renderer.domElement.requestPointerLock(); });
+  // mouse look + pointer lock
+  renderer.domElement.addEventListener('click',()=>{if(!isMobile&&running&&document.pointerLockElement!==renderer.domElement)renderer.domElement.requestPointerLock();});
   addEventListener('mousemove',e=>{
     if(document.pointerLockElement===renderer.domElement){
-      S.yaw-=e.movementX*0.0025; S.pitch-=e.movementY*0.0022;
-      S.pitch=Math.max(-1.2,Math.min(0.4,S.pitch));
+      S.yaw-=e.movementX*0.0024;S.pitch-=e.movementY*0.0021;
+      S.pitch=Math.max(-1.25,Math.min(0.5,S.pitch));
     }
   });
-  addEventListener('mousedown',e=>{ if(!running)return; if(e.button===0)input.attack=true; if(e.button===2)input.skill=true; });
-  addEventListener('mouseup',e=>{ if(e.button===0)input.attack=false; if(e.button===2)input.skill=false; });
+  addEventListener('mousedown',e=>{if(!running)return;if(e.button===0)input.attack=true;if(e.button===2)input.skill=true;});
+  addEventListener('mouseup',e=>{if(e.button===0)input.attack=false;if(e.button===2)input.skill=false;});
   addEventListener('contextmenu',e=>e.preventDefault());
 
-  // mobile joystick
+  // joystick (move)
   const joy=document.getElementById('joy'),knob=document.getElementById('joyKnob');
   let joyId=null,jcx=0,jcy=0;
   const jstart=t=>{const r=joy.getBoundingClientRect();jcx=r.left+r.width/2;jcy=r.top+r.height/2;joyId=t.identifier;};
-  const jmove=t=>{let dx=t.clientX-jcx,dy=t.clientY-jcy;const m=Math.hypot(dx,dy),mx=55;if(m>mx){dx*=mx/m;dy*=mx/m;}
+  const jmove=t=>{let dx=t.clientX-jcx,dy=t.clientY-jcy;const m=Math.hypot(dx,dy),mx=58;if(m>mx){dx*=mx/m;dy*=mx/m;}
     knob.style.transform=`translate(${dx}px,${dy}px)`;input.strafe=dx/mx;input.fwd=-dy/mx;};
   const jend=()=>{joyId=null;knob.style.transform='';input.fwd=0;input.strafe=0;};
   joy.addEventListener('touchstart',e=>{e.preventDefault();jstart(e.changedTouches[0]);jmove(e.changedTouches[0]);},{passive:false});
   joy.addEventListener('touchmove',e=>{e.preventDefault();for(const t of e.changedTouches)if(t.identifier===joyId)jmove(t);},{passive:false});
   joy.addEventListener('touchend',e=>{for(const t of e.changedTouches)if(t.identifier===joyId)jend();},{passive:false});
 
-  // right-side swipe look
-  let lookId=null,lx=0,ly=0;
-  addEventListener('touchstart',e=>{ if(!isMobile)return;
-    for(const t of e.changedTouches){ if(t.clientX>innerWidth*0.45 && lookId===null && !inBtn(t)){lookId=t.identifier;lx=t.clientX;ly=t.clientY;} }
-  },{passive:false});
-  addEventListener('touchmove',e=>{ if(!isMobile)return;
-    for(const t of e.changedTouches){ if(t.identifier===lookId){
-      S.yaw-=(t.clientX-lx)*0.005; S.pitch-=(t.clientY-ly)*0.004;
-      S.pitch=Math.max(-1.2,Math.min(0.4,S.pitch)); lx=t.clientX; ly=t.clientY; } }
-  },{passive:false});
-  addEventListener('touchend',e=>{ for(const t of e.changedTouches) if(t.identifier===lookId) lookId=null; });
-  function inBtn(t){const el=document.elementFromPoint(t.clientX,t.clientY);return el&&(el.classList.contains('abtn')||el.id==='joy'||el.parentElement?.id==='joy');}
+  // aim pad (right) — drag to look/aim
+  const aim=document.getElementById('aimPad');
+  let aimId=null,lx=0,ly=0;
+  aim.addEventListener('touchstart',e=>{e.preventDefault();const t=e.changedTouches[0];aimId=t.identifier;lx=t.clientX;ly=t.clientY;},{passive:false});
+  aim.addEventListener('touchmove',e=>{e.preventDefault();for(const t of e.changedTouches)if(t.identifier===aimId){
+    S.yaw-=(t.clientX-lx)*0.005;S.pitch-=(t.clientY-ly)*0.004;
+    S.pitch=Math.max(-1.25,Math.min(0.5,S.pitch));lx=t.clientX;ly=t.clientY;}},{passive:false});
+  aim.addEventListener('touchend',e=>{for(const t of e.changedTouches)if(t.identifier===aimId)aimId=null;},{passive:false});
 
   const bind=(id,prop)=>{const el=document.getElementById(id);
-    el.addEventListener('touchstart',e=>{e.preventDefault();input[prop]=true;},{passive:false});
-    el.addEventListener('touchend',e=>{e.preventDefault();input[prop]=false;},{passive:false});};
-  bind('btnA','attack'); bind('btnB','skill'); bind('btnY','instinct');
+    el.addEventListener('touchstart',e=>{e.preventDefault();e.stopPropagation();input[prop]=true;},{passive:false});
+    el.addEventListener('touchend',e=>{e.preventDefault();e.stopPropagation();input[prop]=false;},{passive:false});};
+  bind('btnA','attack');bind('btnB','skill');bind('btnY','instinct');bind('btnJump','jump');
+  document.getElementById('btnLock').addEventListener('touchstart',e=>{e.preventDefault();e.stopPropagation();toggleLock();},{passive:false});
 }
 
-/* ---------- GAME LOOP ---------- */
+function toggleLock(){
+  if(S.lockOn){S.lockOn=null;return;}
+  // lock nearest valid target in front
+  let best=null,bd=1e9;
+  const cand=[];
+  if(S.bossMesh)cand.push(S.bossMesh);
+  for(const e of S.enemies)if(e.userData.ambient)cand.push(e);
+  for(const c of cand){
+    const d=c.position.distanceTo(S.player.position);
+    if(d<bd){bd=d;best=c;}
+  }
+  S.lockOn=best;
+}
+
+/* ---------- LOOP UPDATE ---------- */
 function update(dt){
   const f=FORMS[S.form];
-  if(S.transforming>0) S.transforming-=dt;
-  const slow=S.transforming>0?0.35:1; dt*=slow;
+  if(S.transforming>0)S.transforming-=dt;
+  const slow=S.transforming>0?0.4:1;dt*=slow;
 
-  // look input (keys for arrow alt not needed; pointerlock/touch handle yaw)
-  // movement vector relative to yaw
+  // ---- MOVEMENT (fixed & consistent) ----
   let fwd=0,str=0;
-  if(keys['w'])fwd+=1; if(keys['s'])fwd-=1; if(keys['a'])str-=1; if(keys['d'])str+=1;
-  fwd+=input.fwd; str+=input.strafe;
-  const len=Math.hypot(fwd,str); if(len>1){fwd/=len;str/=len;}
+  if(keys['w']||keys['arrowup'])fwd+=1;
+  if(keys['s']||keys['arrowdown'])fwd-=1;
+  if(keys['a']||keys['arrowleft'])str-=1;
+  if(keys['d']||keys['arrowright'])str+=1;
+  fwd+=input.fwd;str+=input.strafe;
+  const len=Math.hypot(fwd,str);if(len>1){fwd/=len;str/=len;}
+
+  // camera-relative movement: forward = where camera looks (yaw)
   const sinY=Math.sin(S.yaw),cosY=Math.cos(S.yaw);
-  const moveX=(str*cosY+fwd*sinY);
-  const moveZ=(-fwd*cosY+str*sinY);
+  // forward direction on ground plane
+  const fX=-sinY, fZ=-cosY;     // unit vector camera-forward
+  const rX= cosY, rZ=-sinY;     // unit vector camera-right
+  let moveX=fX*fwd+rX*str;
+  let moveZ=fZ*fwd+rZ*str;
+
+  // dash
+  if(S.dashCD>0)S.dashCD-=dt;
+  if((keys['shift']||input.dash)&&S.dashCD<=0&&len>0.1&&S.instinct>=10){
+    S.dashT=0.18;S.dashCD=0.7;S.instinct=Math.max(0,S.instinct-10);
+    spawnHit(S.player.position,0xbfe0ff,false,1);
+  }
+  if(S.dashT>0)S.dashT-=dt;
+  const dashMul=S.dashT>0?2.6:1;
 
   const p=S.player.position;
-  const spd=f.speed*(S.senseMode?0.8:1);
-  p.x+=moveX*spd*dt; p.z+=moveZ*spd*dt;
-  // bound
-  const dist=Math.hypot(p.x,p.z); if(dist>115){p.x*=115/dist;p.z*=115/dist;}
+  const spd=f.speed*(S.senseMode?0.82:1)*dashMul;
+  p.x+=moveX*spd*dt;p.z+=moveZ*spd*dt;
+  const dist=Math.hypot(p.x,p.z);if(dist>122){p.x*=122/dist;p.z*=122/dist;}
 
   // jump / fly
   if(f.fly){
-    // eagle: vertical control with jump key/look
-    let climb=0; if(keys[' ']||input.instinct) climb+=1; if(keys['shift']) climb-=1;
-    S.vy += (climb*14 - 2)*dt; S.vy=Math.max(-12,Math.min(12,S.vy));
-    p.y+=S.vy*dt; p.y=Math.max(1, Math.min(45,p.y));
+    let climb=0;if(keys[' ']||input.jump)climb+=1;if(keys['control']||keys['c'])climb-=1;
+    S.vy+=(climb*16-2.5)*dt;S.vy=Math.max(-14,Math.min(14,S.vy));
+    p.y+=S.vy*dt;p.y=Math.max(1.2,Math.min(48,p.y));
   } else {
-    if((keys[' ']||(input.fwd>0.9&&S.grounded&&false))&&S.grounded){S.vy=f.jump;S.grounded=false;}
-    S.vy-=24*dt; p.y+=S.vy*dt;
-    const floor=f.size; if(p.y<=floor){p.y=floor;S.vy=0;S.grounded=true;}
+    if((keys[' ']||input.jump)&&S.grounded){S.vy=f.jump;S.grounded=false;}
+    S.vy-=26*dt;p.y+=S.vy*dt;
+    const floor=f.size;if(p.y<=floor){p.y=floor;S.vy=0;S.grounded=true;}
   }
 
-  // face movement direction
-  if(len>0.05||Math.abs(moveX)+Math.abs(moveZ)>0.05){
-    const targetRot=Math.atan2(moveX,-moveZ);
-    S.player.rotation.y += angleLerp(S.player.rotation.y,targetRot)*Math.min(1,dt*12);
+  // ---- FACING ----
+  // If locked on, face target; else face aim (yaw) when attacking, else move dir
+  let faceTarget;
+  if(S.lockOn&&S.lockOn.parent){
+    faceTarget=Math.atan2(S.lockOn.position.x-p.x,-(S.lockOn.position.z-p.z));
+  } else if(len>0.05){
+    faceTarget=Math.atan2(moveX,-moveZ);
+  } else {
+    faceTarget=Math.atan2(fX,-fZ); // face camera-forward when idle
   }
-  // leg/wing animation
-  animateCreature(S.player,len>0.05);
+  S.player.rotation.y+=angleLerp(S.player.rotation.y,faceTarget)*Math.min(1,dt*14);
 
-  // instinct recovery — "form-like action"
+  animateCreature(S.player,len>0.05||S.dashT>0);
   recoverInstinct(dt,len,f);
-
-  // camera follow
   updateCamera(dt);
-
-  // boss / enemies
   updateAmbient(dt);
-  if(S.bossSpawned&&!S.stageClear) updateBoss(dt);
-  else if(!S.bossSpawned&&!S.stageClear) checkBossTrigger();
+  updateProjectiles(dt);
 
-  // combat
-  if(S.attackCD>0)S.attackCD-=dt; if(S.skillCD>0)S.skillCD-=dt; if(S.hurtCD>0)S.hurtCD-=dt;
-  if(input.attack&&S.attackCD<=0) doAttack(false);
-  if(input.skill&&S.skillCD<=0) doAttack(true);
+  if(S.bossSpawned&&!S.stageClear)updateBoss(dt);
+  else if(!S.bossSpawned&&!S.stageClear)checkBossTrigger();
 
-  // particles drift
-  if(S.particles){ S.particles.rotation.y+=dt*0.02;
-    S.particles.position.y=Math.sin(clock.elapsedTime*0.3)*0.5; }
-  // eye color = instinct
+  // combat cds
+  if(S.attackCD>0)S.attackCD-=dt;if(S.skillCD>0)S.skillCD-=dt;if(S.hurtCD>0)S.hurtCD-=dt;
+  if(input.attack&&S.attackCD<=0)doAttack(false);
+  if(input.skill&&S.skillCD<=0)doAttack(true);
+
+  // combo timer
+  if(S.comboTimer>0){S.comboTimer-=dt;if(S.comboTimer<=0){S.combo=0;showCombo();}}
+
+  if(S.particles){S.particles.rotation.y+=dt*0.02;S.particles.position.y=Math.sin(clock.elapsedTime*0.3)*0.5;}
   setEyeColor(S.player,S.instinct);
-
-  // territory grow with allies
   updateTerritory(dt);
+  if(S.sun){const t=clock.elapsedTime*0.04;S.sun.position.set(Math.cos(t)*70,46+Math.sin(t)*30,Math.sin(t)*46);
+    S.sun.intensity=0.55+Math.max(0,Math.sin(t))*0.6;}
 
-  // day-night subtle
-  if(S.sun){ const t=clock.elapsedTime*0.05; S.sun.position.set(Math.cos(t)*60,40+Math.sin(t)*30,Math.sin(t)*40);
-    S.sun.intensity=0.5+Math.max(0,Math.sin(t))*0.6; }
+  updateReticle();
 }
 
-function angleLerp(a,b){ let d=b-a; while(d>Math.PI)d-=2*Math.PI; while(d<-Math.PI)d+=2*Math.PI; return d; }
+function angleLerp(a,b){let d=b-a;while(d>Math.PI)d-=2*Math.PI;while(d<-Math.PI)d+=2*Math.PI;return d;}
 
 function animateCreature(g,moving){
   const t=clock.elapsedTime;
   g.children.forEach(c=>{
-    if(c.userData.leg!==undefined&&moving){ c.rotation.x=Math.sin(t*10+c.userData.leg)*0.6; }
-    else if(c.userData.leg!==undefined){ c.rotation.x*=0.8; }
+    if(c.userData.leg!==undefined&&moving)c.rotation.x=Math.sin(t*12+c.userData.leg)*0.7;
+    else if(c.userData.leg!==undefined)c.rotation.x*=0.8;
   });
-  if(g.userData.wings){ g.userData.wings.forEach((w,i)=>{ w.rotation.x=Math.sin(t*6)*0.5*(i?-1:1); }); }
+  if(g.userData.wings)g.userData.wings.forEach((w,i)=>{w.rotation.x=Math.sin(t*8)*0.55*(i?-1:1);});
 }
 
 function recoverInstinct(dt,moveLen,f){
-  let recovering=false;
+  let rec=false;
   switch(S.form){
-    case 'mouse': // hidden in grass & still
-      for(const h of S.hideSpots){ if(h.position.distanceTo(S.player.position)<2.5 && moveLen<0.1){recovering=true;break;} }
-      break;
-    case 'fox': if(moveLen>0.6) recovering=true; break; // running
-    case 'snake': if(moveLen<0.05) recovering=true; break; // still
-    case 'eagle': if(S.player.position.y>15) recovering=true; break; // gliding high
-    case 'wolf': if(input.instinct) recovering=true; break; // howling
+    case 'mouse':for(const h of S.hideSpots){if(h.position.distanceTo(S.player.position)<2.6&&moveLen<0.12){rec=true;break;}}break;
+    case 'fox':if(moveLen>0.6)rec=true;break;
+    case 'snake':if(moveLen<0.06)rec=true;break;
+    case 'eagle':if(S.player.position.y>15)rec=true;break;
+    case 'wolf':if(input.instinct)rec=true;break;
   }
-  if(recovering) S.instinct=Math.min(100,S.instinct+22*dt);
-  // small passive drain in sense mode
-  if(S.senseMode) S.instinct=Math.max(0,S.instinct-4*dt);
+  if(rec)S.instinct=Math.min(100,S.instinct+24*dt);
+  if(S.senseMode)S.instinct=Math.max(0,S.instinct-4*dt);
+  S.instinct=Math.min(100,S.instinct+2*dt); // small global trickle
   document.getElementById('instinctFill').style.width=S.instinct.toFixed(0)+'%';
 }
 
 function setEyeColor(g,instinct){
-  const m=g.userData.eyeMat; if(!m)return;
-  const c=new THREE.Color().lerpColors(new THREE.Color(0x556055),new THREE.Color(0xf0d98a),instinct/100);
-  m.color.copy(c);
+  const m=g.userData.eyeMat;if(!m)return;
+  m.color.copy(new THREE.Color().lerpColors(new THREE.Color(0x556055),new THREE.Color(0xf0d98a),instinct/100));
 }
 
 function updateCamera(dt){
-  const f=FORMS[S.form]; const p=S.player.position;
-  const dist=S.camDist*(f.fly?1.4:1)*(f.key==='eagle'?1.6:1);
+  const f=FORMS[S.form];const p=S.player.position;
+  const dist=S.camDist*(f.fly?1.4:1)*(f.key==='eagle'?1.5:1);
   const offX=Math.sin(S.yaw)*Math.cos(S.pitch)*dist;
   const offZ=Math.cos(S.yaw)*Math.cos(S.pitch)*dist;
-  const offY=-Math.sin(S.pitch)*dist+ (f.fly?6:3);
+  const offY=-Math.sin(S.pitch)*dist+(f.fly?6:3.2);
   const target=new THREE.Vector3(p.x-offX,p.y+offY,p.z-offZ);
-  camera.position.lerp(target,Math.min(1,dt*8));
-  camera.lookAt(p.x,p.y+1,p.z);
-  // FOV: eagle wide, wolf wide
-  const tf=(S.form==='eagle'||S.form==='wolf')?75:60;
-  camera.fov+=(tf-camera.fov)*Math.min(1,dt*4); camera.updateProjectionMatrix();
+  camera.position.lerp(target,Math.min(1,dt*9));
+  camera.lookAt(p.x,p.y+1.1,p.z);
+  const tf=(S.form==='eagle'||S.form==='wolf')?74:62;
+  camera.fov+=(tf-camera.fov)*Math.min(1,dt*4);camera.updateProjectionMatrix();
 }
 
 function updateAmbient(dt){
   for(const e of S.enemies){
     if(!e.userData.ambient)continue;
     e.userData.dir+=(Math.random()-.5)*dt;
+    const toP=e.position.distanceTo(S.player.position);
+    if(toP<9){const ax=e.position.x-S.player.position.x,az=e.position.z-S.player.position.z;e.userData.dir=Math.atan2(az,ax);}
     e.position.x+=Math.cos(e.userData.dir)*e.userData.spd*dt;
     e.position.z+=Math.sin(e.userData.dir)*e.userData.spd*dt;
-    const d=Math.hypot(e.position.x,e.position.z); if(d>90)e.userData.dir+=Math.PI;
+    const d=Math.hypot(e.position.x,e.position.z);if(d>96)e.userData.dir+=Math.PI;
     e.rotation.y=-e.userData.dir+Math.PI/2;
     animateCreature(e,true);
-    // flee from player if mouse-type prey
-    const toP=e.position.distanceTo(S.player.position);
-    if(toP<8){ const ax=e.position.x-S.player.position.x,az=e.position.z-S.player.position.z;
-      e.userData.dir=Math.atan2(az,ax); }
   }
 }
 
 function checkBossTrigger(){
-  // approach center to spawn boss
-  if(Math.hypot(S.player.position.x,S.player.position.z)<14 || clock.elapsedTime>4){
-    if(!S.bossSpawned) spawnBoss();
-  }
+  if(Math.hypot(S.player.position.x,S.player.position.z)<16||clock.elapsedTime>3){if(!S.bossSpawned)spawnBoss();}
 }
 
 function updateBoss(dt){
-  const b=S.boss,m=S.bossMesh; if(!m)return;
-  b.cd-=dt;
-  // chase player
-  const dx=S.player.position.x-m.position.x, dz=S.player.position.z-m.position.z;
+  const b=S.boss,m=S.bossMesh;if(!m)return;
+  b.cd-=dt;b.t+=dt;
+  const dx=S.player.position.x-m.position.x,dz=S.player.position.z-m.position.z;
   const d=Math.hypot(dx,dz);
-  const sp=b.speed;
-  if(d>3){ m.position.x+=dx/d*sp*dt; m.position.z+=dz/d*sp*dt; }
   m.rotation.y=Math.atan2(dx,dz);
-  // boss can fly if eagle
-  if(b.form==='eagle'){ m.position.y=8+Math.sin(clock.elapsedTime*1.5)*4; } else m.position.y=b.size;
+
+  const style=b.style;
+  if(style==='ranged'){
+    // keep distance & shoot
+    if(d<14){m.position.x-=dx/d*b.speed*dt;m.position.z-=dz/d*b.speed*dt;}
+    else if(d>22){m.position.x+=dx/d*b.speed*0.6*dt;m.position.z+=dz/d*b.speed*0.6*dt;}
+    if(b.cd<=0){spawnBossProjectile(m.position,S.player.position,0x66ff88);b.cd=1.4;}
+    m.position.y=b.size;
+  } else if(style==='dive'){
+    // eagle: circle high, dive when timer
+    if(b.diveT>0){
+      b.diveT-=dt;
+      m.position.x+=dx/(d||1)*b.speed*1.6*dt;m.position.z+=dz/(d||1)*b.speed*1.6*dt;
+      m.position.y+=(S.player.position.y-m.position.y)*Math.min(1,dt*4);
+      if(d<3&&b.cd<=0){damagePlayer(16);b.cd=1;cameraShake(0.6);}
+    } else {
+      m.position.y+=(11+Math.sin(b.t*1.2)*3-m.position.y)*Math.min(1,dt*2);
+      const ox=Math.cos(b.t*0.8)*12,oz=Math.sin(b.t*0.8)*12;
+      m.position.x+=((S.player.position.x+ox)-m.position.x)*Math.min(1,dt*1.5);
+      m.position.z+=((S.player.position.z+oz)-m.position.z)*Math.min(1,dt*1.5);
+      if(b.cd<=0){b.diveT=1.4;b.cd=3;flashBanner('🦅 急降下！','真下に潜って回避せよ',1100);}
+    }
+  } else if(style==='orbit'){
+    const ox=Math.cos(b.t*0.6)*10,oz=Math.sin(b.t*0.6)*10;
+    m.position.x+=((S.player.position.x+ox)-m.position.x)*Math.min(1,dt*1.2);
+    m.position.z+=((S.player.position.z+oz)-m.position.z)*Math.min(1,dt*1.2);
+    m.position.y=b.size+Math.sin(b.t)*1.5;
+    m.rotation.y+=dt*1.5;
+    if(b.cd<=0){for(let i=0;i<3;i++){const ang=b.t+i*2.1;spawnBossProjectile(m.position,{x:m.position.x+Math.cos(ang)*5,y:1,z:m.position.z+Math.sin(ang)*5},0xcc66ff);}b.cd=1.6;}
+    if(d<4&&b.cd>1.4){damagePlayer(10);}
+  } else {
+    // chase / pack
+    if(d>3){m.position.x+=dx/d*b.speed*dt;m.position.z+=dz/d*b.speed*dt;}
+    m.position.y=b.size;
+    if(d<3.6&&b.cd<=0){damagePlayer(12);b.cd=1.1;cameraShake(0.45);}
+  }
   animateCreature(m,d>3);
-  m.children[0].scale.setScalar(1+Math.sin(clock.elapsedTime*8)*0.02);
-
-  // boss attacks player
-  if(d<3.5 && b.cd<=0){ damagePlayer(12); b.cd=1.2; cameraShake(); }
-
-  // boss hp bar via banner-less: show subtle scale tint
-  const ratio=b.hp/b.maxhp;
-  m.children[0].material.emissive=new THREE.Color(0x550000).multiplyScalar(1-ratio);
+  if(m.userData.body)m.userData.body.scale.setScalar(1+Math.sin(clock.elapsedTime*8)*0.02);
 }
 
-function cameraShake(){ S.shake=0.4; }
+function cameraShake(a=0.4){S.shake=a;}
+
+/* ---------- AIM ---------- */
+function aimDir(){
+  // direction the camera/player is aiming on horizontal plane (and pitch for ranged)
+  if(S.lockOn&&S.lockOn.parent){
+    const v=new THREE.Vector3().subVectors(S.lockOn.position,S.player.position);
+    return v.normalize();
+  }
+  const cy=Math.cos(S.pitch);
+  return new THREE.Vector3(-Math.sin(S.yaw)*cy,Math.sin(S.pitch),-Math.cos(S.yaw)*cy).normalize();
+}
 
 function isWeaknessSatisfied(b){
-  if(b.weakness==='all') return true;
+  if(b.weakness==='all')return true;
   if(b.weakness===S.form){
-    // for eagle boss + mouse weakness, require being roughly under it
     if(b.form==='eagle'&&S.form==='mouse'){
-      return Math.abs(S.player.position.x-S.bossMesh.position.x)<5 &&
-             Math.abs(S.player.position.z-S.bossMesh.position.z)<5;
+      return Math.abs(S.player.position.x-S.bossMesh.position.x)<5&&Math.abs(S.player.position.z-S.bossMesh.position.z)<5;
     }
     return true;
   }
@@ -706,171 +772,291 @@ function isWeaknessSatisfied(b){
 
 function doAttack(skill){
   const f=FORMS[S.form];
-  S.attackCD=skill?0.6:0.35; if(skill)S.skillCD=0.6;
-  const cost=skill?15:8;
-  if(S.instinct<cost){ return; }
+  S.attackCD=skill?Math.max(0.5,f.atkCD+0.2):f.atkCD;if(skill)S.skillCD=0.6;
+  const cost=skill?16:7;
+  if(S.instinct<cost){return;}
   S.instinct-=cost;
-  // hit ambient enemies near + facing
-  const reach=skill?5:3.2;
-  const fx=Math.sin(S.player.rotation.y),fz=-Math.cos(S.player.rotation.y);
-  // attack boss
+  const dir=aimDir();
+
+  if(f.ranged||skill&&(S.form==='wolf')){
+    // ranged / projectile (snake poison or wolf howl shockwave)
+    if(S.form==='wolf'&&skill){spawnShockwave();}
+    else{
+      const from=S.player.position.clone();from.y+=0.6;
+      const target=from.clone().add(dir.clone().multiplyScalar(40));
+      spawnPlayerProjectile(from,target,skill?2:1);
+    }
+    swingAnim();
+    return;
+  }
+
+  // melee — aimed cone in front (toward aimDir / lockOn)
+  swingAnim();
+  const reach=skill?f.reach+1.5:f.reach;
+  const hx=dir.x,hz=dir.z;
+  let hitSomething=false;
+
   if(S.bossSpawned&&!S.stageClear&&S.bossMesh){
-    const d=S.player.position.distanceTo(S.bossMesh.position);
-    if(d<reach+S.boss.size){
-      const weak=isWeaknessSatisfied(S.boss);
-      const dmg=(skill?14:8)*(weak?3:1);
-      S.boss.hp-=dmg;
-      spawnHit(S.bossMesh.position,weak?0xffe066:0xffffff,weak);
-      if(weak) flashBanner('弱点ヒット！','×3 ダメージ — '+S.boss.name,900);
-      if(S.boss.hp<=0) bossDefeated();
+    const bd=S.player.position.distanceTo(S.bossMesh.position);
+    const tox=S.bossMesh.position.x-S.player.position.x,toz=S.bossMesh.position.z-S.player.position.z;
+    const tl=Math.hypot(tox,toz)||1;
+    const dot=(tox/tl)*hx+(toz/tl)*hz;
+    if(bd<reach+S.boss.size&&dot>0.3){
+      hitBoss(skill);hitSomething=true;
     }
   }
-  // attack ambient
   S.enemies=S.enemies.filter(e=>{
-    if(e.userData.ambient && e.position.distanceTo(S.player.position)<reach){
-      spawnHit(e.position,0x88ccff,false); scene.remove(e);
-      S.instinct=Math.min(100,S.instinct+6); return false;
-    } return true;
+    if(e.userData.ambient){
+      const ed=e.position.distanceTo(S.player.position);
+      const tox=e.position.x-S.player.position.x,toz=e.position.z-S.player.position.z;
+      const tl=Math.hypot(tox,toz)||1;const dot=(tox/tl)*hx+(toz/tl)*hz;
+      if(ed<reach&&dot>0.2){
+        e.userData.hp-=skill?22:12;
+        spawnHit(e.position,0x88ccff,false,1);
+        if(e.userData.hp<=0){scene.remove(e);S.instinct=Math.min(100,S.instinct+6);bumpCombo();return false;}
+      }
+    }return true;
   });
+  if(hitSomething)bumpCombo();
 }
 
-function spawnHit(pos,color,big){
-  const g=new THREE.Mesh(new THREE.RingGeometry(0.2,big?1.4:0.7,16),
-    new THREE.MeshBasicMaterial({color,transparent:true,opacity:0.9,side:THREE.DoubleSide}));
-  g.position.copy(pos); g.position.y+=1; g.lookAt(camera.position);
-  g.userData.fx=0; scene.add(g); S.fx=S.fx||[]; S.fx.push(g);
+function hitBoss(skill){
+  const f=FORMS[S.form];
+  const weak=isWeaknessSatisfied(S.boss);
+  const base=(skill?f.dmg+8:f.dmg);
+  const dmg=base*(weak?3:1);
+  S.boss.hp-=dmg;
+  spawnHit(S.bossMesh.position,weak?0xffe066:0xffffff,weak,weak?2:1);
+  document.getElementById('bossFill').style.width=Math.max(0,S.boss.hp/S.boss.maxhp*100)+'%';
+  if(weak){flashBanner('弱点ヒット！','×3 ダメージ — '+S.boss.name,800);cameraShake(0.3);}
+  bumpCombo();
+  if(S.boss.hp<=0)bossDefeated();
+}
+
+function bumpCombo(){S.combo++;S.comboTimer=2.2;showCombo();}
+
+function swingAnim(){
+  // quick lunge of body
+  if(S.player.userData.body){const b=S.player.userData.body;b.position.x=0.4;setTimeout(()=>{if(b)b.position.x=0;},90);}
+}
+
+/* ---------- PROJECTILES ---------- */
+function spawnPlayerProjectile(from,to,power){
+  const dir=new THREE.Vector3().subVectors(to,from).normalize();
+  const mesh=new THREE.Mesh(new THREE.SphereGeometry(0.3*power,8,8),
+    new THREE.MeshBasicMaterial({color:0x9bff8b}));
+  mesh.position.copy(from);scene.add(mesh);
+  S.projectiles.push({mesh,dir,spd:42,life:1.6,dmg:(FORMS[S.form].dmg)*power,player:true});
+}
+function spawnBossProjectile(from,to,color){
+  const dir=new THREE.Vector3(to.x-from.x,(to.y||1)-from.y,to.z-from.z).normalize();
+  const mesh=new THREE.Mesh(new THREE.SphereGeometry(0.45,8,8),new THREE.MeshBasicMaterial({color}));
+  mesh.position.copy(from);mesh.position.y+=1;scene.add(mesh);
+  S.projectiles.push({mesh,dir,spd:24,life:2.5,dmg:12,player:false});
+}
+function spawnShockwave(){
+  const ring=new THREE.Mesh(new THREE.RingGeometry(0.5,1.2,32),
+    new THREE.MeshBasicMaterial({color:0xa0d8ff,transparent:true,opacity:0.8,side:THREE.DoubleSide}));
+  ring.rotation.x=-Math.PI/2;ring.position.copy(S.player.position);ring.position.y=0.4;
+  scene.add(ring);S.fx.push({mesh:ring,t:0,shock:true});
+  // damage all in radius growing — handle immediate radius hits over time via flag
+  S.shockActive={pos:S.player.position.clone(),t:0};
+}
+function updateProjectiles(dt){
+  S.projectiles=S.projectiles.filter(pr=>{
+    pr.mesh.position.add(pr.dir.clone().multiplyScalar(pr.spd*dt));
+    pr.life-=dt;
+    if(pr.player){
+      if(S.bossMesh&&pr.mesh.position.distanceTo(S.bossMesh.position)<S.boss.size+0.8){
+        const weak=isWeaknessSatisfied(S.boss);
+        S.boss.hp-=pr.dmg*(weak?3:1);
+        spawnHit(pr.mesh.position,weak?0xffe066:0xffffff,weak,weak?2:1);
+        document.getElementById('bossFill').style.width=Math.max(0,S.boss.hp/S.boss.maxhp*100)+'%';
+        if(weak)flashBanner('弱点ヒット！','×3 ダメージ',700);
+        bumpCombo();if(S.boss.hp<=0)bossDefeated();
+        scene.remove(pr.mesh);return false;
+      }
+      for(let i=0;i<S.enemies.length;i++){const e=S.enemies[i];
+        if(e.userData.ambient&&pr.mesh.position.distanceTo(e.position)<1.2){
+          e.userData.hp-=pr.dmg;spawnHit(e.position,0x88ccff,false,1);
+          if(e.userData.hp<=0){scene.remove(e);S.enemies.splice(i,1);bumpCombo();}
+          scene.remove(pr.mesh);return false;
+        }}
+    } else {
+      if(pr.mesh.position.distanceTo(S.player.position)<FORMS[S.form].size+0.7){
+        damagePlayer(pr.dmg);scene.remove(pr.mesh);return false;
+      }
+    }
+    if(pr.life<=0||pr.mesh.position.y<0){scene.remove(pr.mesh);return false;}
+    return true;
+  });
+  // shockwave damage
+  if(S.shockActive){
+    S.shockActive.t+=dt;const r=S.shockActive.t*22;
+    if(S.bossMesh){const d=S.bossMesh.position.distanceTo(S.shockActive.pos);
+      if(Math.abs(d-r)<2&&!S.shockActive.hit){const weak=isWeaknessSatisfied(S.boss);
+        S.boss.hp-=(FORMS.wolf.dmg+10)*(weak?3:1);spawnHit(S.bossMesh.position,weak?0xffe066:0xa0d8ff,weak,2);
+        document.getElementById('bossFill').style.width=Math.max(0,S.boss.hp/S.boss.maxhp*100)+'%';
+        bumpCombo();S.shockActive.hit=true;if(S.boss.hp<=0)bossDefeated();}}
+    if(S.shockActive.t>1)S.shockActive=null;
+  }
+}
+
+/* ---------- FX ---------- */
+function spawnHit(pos,color,big,scaleMul=1){
+  const g=new THREE.Mesh(new THREE.RingGeometry(0.2,(big?1.4:0.7)*scaleMul,16),
+    new THREE.MeshBasicMaterial({color,transparent:true,opacity:0.95,side:THREE.DoubleSide}));
+  g.position.copy(pos);g.position.y+=1;g.lookAt(camera.position);g.userData.t=0;
+  scene.add(g);S.fx.push({mesh:g,t:0});
 }
 
 function damagePlayer(amt){
-  if(S.hurtCD>0)return; S.hurtCD=0.6;
+  if(S.hurtCD>0)return;S.hurtCD=0.55;
   S.vitality=Math.max(0,S.vitality-amt);
   document.getElementById('healthFill').style.width=S.vitality+'%';
-  // fur stand-up reaction
-  S.player.children.forEach(c=>{ c.position.y+=0.05; });
-  if(S.vitality<=0) gameOver();
+  S.combo=0;showCombo();cameraShake(0.35);
+  // red flash
+  flashRed();
+  if(S.vitality<=0)gameOver();
+}
+let redEl;
+function flashRed(){
+  if(!redEl){redEl=document.createElement('div');
+    redEl.style.cssText='position:fixed;inset:0;z-index:23;pointer-events:none;background:radial-gradient(circle,transparent 50%,#ff000055 100%);opacity:0;transition:opacity .1s;';
+    document.body.appendChild(redEl);}
+  redEl.style.opacity=1;setTimeout(()=>redEl.style.opacity=0,120);
 }
 
 function bossDefeated(){
   const st=STAGES[S.stageIdx];
-  scene.remove(S.bossMesh); S.bossMesh=null; S.stageClear=true;
-  S.killStreak++; S.shards++;
-  // big variant
+  document.getElementById('bossWrap').style.opacity=0;
+  for(let i=0;i<8;i++)setTimeout(()=>{if(S.bossMesh)spawnHit(S.bossMesh.position,0xffe066,true,1.5);},i*70);
+  setTimeout(()=>{if(S.bossMesh){scene.remove(S.bossMesh);S.bossMesh=null;}},250);
+  S.stageClear=true;S.shards++;S.lockOn=null;
   flashBanner(st.boss.emoji+' '+st.boss.name+' 撃破！',(st.unlock?('「'+FORMS[st.unlock].name+'」形態を解放！'):'記憶の断片を入手'),3000);
-  // ally joins -> territory grows
   addAlly(st.boss.color);
-  if(st.unlock){ FORMS[st.unlock].unlocked=true; refreshWheel(); }
+  if(st.unlock){FORMS[st.unlock].unlocked=true;refreshWheel();}
   S.vitality=Math.min(100,S.vitality+30);
-  // stage 5 choice
-  if(st.choice){ setTimeout(askChoice,3200); return; }
+  if(st.choice){setTimeout(askChoice,3200);return;}
   setTimeout(nextStage,3400);
 }
 
 function askChoice(){
   const b=document.getElementById('banner'),s=document.getElementById('subBanner');
-  b.style.opacity=1;s.style.opacity=1;
-  b.innerHTML='選択せよ';
-  s.innerHTML='【A】倒す（革命）　／　【B】逃がす（共存）　— 画面のA/Bボタン or キー A/B';
-  const handler=(e)=>{
-    let c=null; if(e.key&&e.key.toLowerCase()==='a')c='revolution'; if(e.key&&e.key.toLowerCase()==='b')c='coexist';
-    if(c){ S.choiceMade=c; cleanup(); }
-  };
+  b.style.opacity=1;s.style.opacity=1;b.innerHTML='選択せよ';
+  s.innerHTML='【A】倒す（革命）　／　【B】逃がす（共存）　— A/B キー or 画面ボタン';
+  const handler=(e)=>{let c=null;if(e.key&&e.key.toLowerCase()==='a')c='revolution';if(e.key&&e.key.toLowerCase()==='b')c='coexist';if(c){S.choiceMade=c;cleanup();}};
   const ta=()=>{S.choiceMade='revolution';cleanup();};
   const tb=()=>{S.choiceMade='coexist';cleanup();};
-  function cleanup(){ removeEventListener('keydown',handler);
+  function cleanup(){removeEventListener('keydown',handler);
     document.getElementById('btnA').removeEventListener('touchstart',ta);
     document.getElementById('btnB').removeEventListener('touchstart',tb);
     flashBanner(S.choiceMade==='coexist'?'共存の道を選んだ':'革命の道を選んだ',
-                S.choiceMade==='coexist'?'記憶の断片を全て集めれば真エンドへ':'生態系を取り戻すが縄張りも荒廃する',3000);
-    setTimeout(nextStage,3200);
-  }
+      S.choiceMade==='coexist'?'記憶の断片を全て集めれば真エンドへ':'生態系を取り戻すが縄張りも荒廃する',3000);
+    setTimeout(nextStage,3200);}
   addEventListener('keydown',handler);
   document.getElementById('btnA').addEventListener('touchstart',ta,{passive:true});
   document.getElementById('btnB').addEventListener('touchstart',tb,{passive:true});
 }
 
-function addAlly(color){
-  S.allies.push(color);
-}
+function addAlly(color){S.allies.push(color);}
 function updateTerritory(dt){
   if(!S.territory)return;
-  const want=S.allies.length;
-  while(S.territory.children.length<want){
+  while(S.territory.children.length<S.allies.length){
     const i=S.territory.children.length;
     const ring=new THREE.Mesh(new THREE.RingGeometry(6+i*3,6.4+i*3,48),
-      new THREE.MeshBasicMaterial({color:0x6fae6f,transparent:true,opacity:0.0,side:THREE.DoubleSide}));
-    ring.rotation.x=-Math.PI/2; ring.position.y=0.05; ring.userData.grow=0; S.territory.add(ring);
+      new THREE.MeshBasicMaterial({color:0x6fae6f,transparent:true,opacity:0,side:THREE.DoubleSide}));
+    ring.rotation.x=-Math.PI/2;ring.position.y=0.05;ring.userData.grow=0;S.territory.add(ring);
   }
-  S.territory.children.forEach(r=>{ if(r.userData.grow<0.45){r.userData.grow+=dt*0.3; r.material.opacity=r.userData.grow;} });
+  S.territory.children.forEach(r=>{if(r.userData.grow<0.45){r.userData.grow+=dt*0.3;r.material.opacity=r.userData.grow;}});
 }
 
 function nextStage(){
-  if(S.stageIdx>=STAGES.length-1){ return victory(); }
-  S.stageIdx++;
-  S.vitality=Math.min(100,S.vitality+10); S.instinct=100;
-  buildStage(); updateHUD();
+  if(S.stageIdx>=STAGES.length-1)return victory();
+  S.stageIdx++;S.vitality=Math.min(100,S.vitality+10);S.instinct=100;
+  buildStage();updateHUD();
   const st=STAGES[S.stageIdx];
-  flashBanner(st.tag.split('—')[1].trim(),st.obj,3200);
-  setObjective(st.obj);
+  flashBanner(st.tag.split('—')[1].trim(),st.obj,3200);setObjective(st.obj);
 }
 
 function gameOver(){
   running=false;
-  const ending = S.allies.length===0 ? '孤独エンド' : '';
-  showEnd('💀 GAME OVER', ending? '仲間も縄張りも失った……孤独な末路':'体力が尽きた — 弱さは時に死を意味する');
+  showEnd('💀 GAME OVER',S.allies.length===0?'仲間も縄張りも失った……孤独な末路':'体力が尽きた — 弱さは時に死を意味する');
 }
 function victory(){
-  running=false;
-  let title,desc;
-  if(S.choiceMade==='coexist'){ title='🌍 共存エンド（True）'; desc='原始人形態を保ち、人間と生態系の橋渡しに。根のネットワークが世界へ広がる。'; }
-  else if(S.choiceMade==='revolution'){ title='⚔ 革命エンド'; desc='人間文明を後退させ生態系を取り戻した。だが自らの縄張りも戦争で荒廃した。'; }
-  else { title='🏆 CLEAR'; desc='食物連鎖を逆走し、頂点を越え、システムそのものを打ち破った。'; }
+  running=false;let title,desc;
+  if(S.choiceMade==='coexist'){title='🌍 共存エンド（True）';desc='原始人形態を保ち、人間と生態系の橋渡しに。根のネットワークが世界へ広がる。';}
+  else if(S.choiceMade==='revolution'){title='⚔ 革命エンド';desc='人間文明を後退させ生態系を取り戻した。だが自らの縄張りも戦争で荒廃した。';}
+  else{title='🏆 CLEAR';desc='食物連鎖を逆走し、頂点を越え、システムそのものを打ち破った。';}
   showEnd(title,desc+'　— 記憶の断片 '+S.shards+'/'+STAGES.length);
 }
 function showEnd(title,desc){
-  const t=document.getElementById('title');
-  t.style.display='flex';
-  t.querySelector('h1').textContent=title;
-  t.querySelector('.sub').textContent=desc;
+  if(document.pointerLockElement)document.exitPointerLock();
+  const t=document.getElementById('title');t.style.display='flex';
+  t.querySelector('h1').textContent=title;t.querySelector('.sub').textContent=desc;
   t.querySelector('.chain').textContent='🐭 → 🦊 → 🐍 → 🦅 → 🐺 → 🧍 → ⚡';
   t.querySelector('.tag').innerHTML='"You were prey. Now you are everything.<br>But everything has something to lose."';
   document.getElementById('startBtn').textContent='もう一度';
 }
 
+/* ---------- RETICLE / LOCK MARKER ---------- */
+const _v=new THREE.Vector3();
+function project(pos){
+  _v.copy(pos);_v.project(camera);
+  return {x:(_v.x*0.5+0.5)*W(),y:(-_v.y*0.5+0.5)*H(),z:_v.z};
+}
+function updateReticle(){
+  const ret=document.getElementById('reticle');
+  const lock=document.getElementById('lockMark');
+  // show reticle for ranged/aim forms or when not locked
+  ret.classList.add('show');
+  ret.classList.toggle('locked',!!S.lockOn);
+  if(S.lockOn&&S.lockOn.parent){
+    const p=project(S.lockOn.position);
+    if(p.z<1){lock.style.opacity=1;lock.style.left=p.x+'px';lock.style.top=p.y+'px';}
+    else lock.style.opacity=0;
+  } else lock.style.opacity=0;
+}
+
 /* ---------- RENDER ---------- */
+let fpsT=0,fpsC=0;
 function loop(){
   requestAnimationFrame(loop);
   const dt=Math.min(0.05,clock.getDelta());
-  if(running) update(dt);
-  // fx rings
-  if(S.fx){ S.fx=S.fx.filter(g=>{ g.userData.fx+=dt*2.5; g.scale.setScalar(1+g.userData.fx);
-    g.material.opacity=Math.max(0,0.9-g.userData.fx); g.lookAt(camera.position);
-    if(g.userData.fx>1){scene.remove(g);return false;} return true; }); }
-  // camera shake
-  if(S.shake>0){ camera.position.x+=(Math.random()-.5)*S.shake; camera.position.y+=(Math.random()-.5)*S.shake; S.shake*=0.85; if(S.shake<0.01)S.shake=0; }
+  if(running)update(dt);
+  // fx
+  S.fx=S.fx.filter(o=>{o.t+=dt*(o.shock?1:2.5);
+    if(o.shock){o.mesh.scale.setScalar(1+o.t*22);o.mesh.material.opacity=Math.max(0,0.8-o.t*0.8);}
+    else{o.mesh.scale.setScalar(1+o.t);o.mesh.material.opacity=Math.max(0,0.95-o.t);o.mesh.lookAt(camera.position);}
+    if(o.t>1){scene.remove(o.mesh);return false;}return true;});
+  // shake
+  if(S.shake>0){camera.position.x+=(Math.random()-.5)*S.shake;camera.position.y+=(Math.random()-.5)*S.shake;S.shake*=0.85;if(S.shake<0.01)S.shake=0;}
   renderer.render(scene,camera);
+  // fps
+  fpsC++;fpsT+=dt;if(fpsT>=1){document.getElementById('fps').textContent='FPS '+fpsC;fpsC=0;fpsT=0;}
 }
 
 /* ---------- START ---------- */
 function start(){
-  // reset
-  S.stageIdx=0; S.form='mouse'; S.instinct=100; S.vitality=100;
-  S.allies=[]; S.shards=0; S.choiceMade=null; S.killStreak=0; S.fx=[];
+  S.stageIdx=0;S.form='mouse';S.instinct=100;S.vitality=100;
+  S.allies=[];S.shards=0;S.choiceMade=null;S.combo=0;S.fx=[];S.projectiles=[];
   ORDER.forEach(k=>FORMS[k].unlocked=(k==='mouse'));
-  S.yaw=0; S.pitch=-0.25;
-  buildStage(); updateHUD();
+  S.yaw=0;S.pitch=-0.22;S.lockOn=null;
+  buildStage();updateHUD();
   document.getElementById('title').style.display='none';
   running=true;
+  document.getElementById('reticle').classList.add('show');
   flashBanner('STAGE 01 — 草原の夜明け','キツネを倒し、最初の変身を掴め',3200);
   setObjective(STAGES[0].obj);
 }
 
-return { init, start, loopStart:loop };
+return {init,start,loopStart:loop};
 })();
 
 window.addEventListener('load',()=>{
-  GAME.init(); GAME.loopStart();
+  GAME.init();GAME.loopStart();
   document.getElementById('startBtn').addEventListener('click',()=>GAME.start());
-  if(/[?&]autostart=1/.test(location.search)) GAME.start();
+  if(/[?&]autostart=1/.test(location.search))GAME.start();
 });
 </script>
 </body>
