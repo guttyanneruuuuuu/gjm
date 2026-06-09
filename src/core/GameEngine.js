@@ -143,9 +143,6 @@ export class GameEngine {
     // Calculate delta time
     this.deltaTime = Math.min(this.clock.getDelta(), 0.033); // Max 30ms per frame
 
-    // Update input
-    this.input.update();
-
     // Update physics
     this.physics.update(this.deltaTime);
 
@@ -153,6 +150,9 @@ export class GameEngine {
     for (let callback of this.updateCallbacks) {
       callback(this.deltaTime);
     }
+
+    // Update input (clear pressed actions at the END of frame)
+    this.input.update();
 
     // Call render callbacks
     for (let callback of this.renderCallbacks) {

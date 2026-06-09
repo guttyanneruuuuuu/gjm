@@ -50,15 +50,22 @@ export class InputManager {
         const movementX = e.movementX || 0;
         const movementY = e.movementY || 0;
         
-        this.yaw -= movementX * 0.005;
-        this.pitch -= movementY * 0.005;
+        this.yaw -= movementX * 0.002;
+        this.pitch -= movementY * 0.002;
         this.pitch = Math.max(-Math.PI / 2, Math.min(Math.PI / 2, this.pitch));
       }
     });
 
     document.addEventListener('mousedown', (e) => {
+      if (!this.mouseLook) {
+        this.requestPointerLock(document.body);
+      }
       if (e.button === 0) this.press('attack');
       if (e.button === 2) this.press('skill');
+    });
+
+    document.addEventListener('pointerlockchange', () => {
+      this.mouseLook = !!document.pointerLockElement;
     });
 
     document.addEventListener('contextmenu', (e) => {
@@ -160,10 +167,10 @@ export class InputManager {
     let ix = 0, iz = 0;
 
     // Keyboard input - FIXED: Standard WASD/Arrow key mapping
-    if (this.keys['w'] || this.keys['arrowup']) iz -= 1;      // W/↑ = forward
-    if (this.keys['s'] || this.keys['arrowdown']) iz += 1;    // S/↓ = backward
-    if (this.keys['a'] || this.keys['arrowleft']) ix -= 1;    // A/← = left
-    if (this.keys['d'] || this.keys['arrowright']) ix += 1;   // D/→ = right
+    if (this.keys['w'] || this.keys['arrowup']) iz -= 1;
+    if (this.keys['s'] || this.keys['arrowdown']) iz += 1;
+    if (this.keys['a'] || this.keys['arrowleft']) ix -= 1;
+    if (this.keys['d'] || this.keys['arrowright']) ix += 1;
 
     // Gamepad input
     if (this.moveX || this.moveZ) {

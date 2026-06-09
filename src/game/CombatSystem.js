@@ -98,7 +98,12 @@ export class CombatSystem {
    */
   attack(attackType = 'normal') {
     const damage = this.calculateDamage(attackType);
-    const target = this.lockedTarget || this.findNearestEnemy();
+    let target = this.lockedTarget;
+    
+    // If no locked target, find one in front of player
+    if (!target) {
+      target = this.findTargetInFront();
+    }
 
     if (!target) {
       console.log('No target in range');
@@ -291,7 +296,7 @@ export class CombatSystem {
         geometry.dispose();
         material.dispose();
         texture.dispose();
-        canvas = null;
+        // canvas = null; // Fix: Prevent reference error in animation loop
       }
     };
 
@@ -334,7 +339,7 @@ export class CombatSystem {
         geometry.dispose();
         material.dispose();
         texture.dispose();
-        canvas = null;
+        // canvas = null; // Fix: Prevent reference error in animation loop
       }
     };
 
@@ -385,6 +390,44 @@ export class CombatSystem {
 
       animate();
     }
+  }
+
+  /**
+   * Find target in front of player
+   */
+  findTargetInFront() {
+    let bestTarget = null;
+    let bestScore = -1;
+
+    const playerPos = this.player.position;
+    const playerForward = new THREE.Vector3(
+      Math.sin(this.player.yaw),
+      0,
+      Math.cos(this.player.yaw)
+    ).normalize();
+
+    for (let enemy of this.enemies) {
+      if (!enemy.active) continue;
+      
+      const toEnemy = enemy.position.clone().sub(playerPos);
+      const dist = toEnemy.length();
+      
+      if (dist > this.combatRadius) continue;
+      
+      toEnemy.normalize();
+      const dot = toEnemy.dot(playerForward);
+      
+      // Only consider enemies in front (roughly 90 degree cone)
+      if (dot > 0.5) {
+        // Score based on proximity and angle
+        const score = dot / (dist * 0.5 + 1);
+        if (score > bestScore) {
+          bestScore = score;
+          bestTarget = enemy;
+        }
+      }
+    }
+    return bestTarget;
   }
 
   /**
