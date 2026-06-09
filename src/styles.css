@@ -1,0 +1,170 @@
+/* Inverse Hunter - Styles */
+
+:root {
+  --gold: #e7c878;
+  --gold2: #c79b4a;
+  --bg: #05080c;
+  --ink: #e8e2d4;
+  --green: #8fb09c;
+  --red: #e07b7b;
+  --blue: #86a0c0;
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+html, body {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: var(--bg);
+  font-family: "Hiragino Kaku Gothic ProN", "Yu Gothic", "Segoe UI", sans-serif;
+  color: var(--ink);
+}
+
+#game {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+/* Loading Screen */
+#loader {
+  position: fixed;
+  inset: 0;
+  z-index: 120;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: radial-gradient(circle at 50% 40%, #16242f 0%, #05080c 75%);
+  gap: 22px;
+}
+
+#loader .l-title {
+  font-size: clamp(24px, 5vw, 42px);
+  letter-spacing: 0.2em;
+  color: #f2e9d0;
+  font-weight: 300;
+  text-shadow: 0 0 26px #c79b4a99;
+}
+
+#loader .l-bar {
+  width: min(60vw, 360px);
+  height: 6px;
+  background: #10171c;
+  border-radius: 6px;
+  overflow: hidden;
+  border: 1px solid #2a3a30;
+}
+
+#loader .l-fill {
+  height: 100%;
+  width: 0;
+  background: linear-gradient(90deg, #c79b4a, #f0d98a);
+  transition: width 0.2s;
+}
+
+#loader .l-tip {
+  font-size: 12px;
+  color: #7f9486;
+  letter-spacing: 0.1em;
+  max-width: 80%;
+  text-align: center;
+  line-height: 1.8;
+}
+
+/* HUD */
+#hud {
+  position: fixed;
+  inset: 0;
+  z-index: 20;
+  pointer-events: none;
+}
+
+#formBox {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  display: flex;
+  gap: 9px;
+  align-items: center;
+  background: #0a0f14cc;
+  padding: 8px 14px;
+  border-radius: 30px;
+  border: 1px solid #2a3a30;
+  backdrop-filter: blur(5px);
+}
+
+#formEmoji {
+  font-size: 30px;
+  line-height: 1;
+}
+
+#formName {
+  font-size: 14px;
+  letter-spacing: 0.1em;
+  color: #dfe7df;
+}
+
+#formType {
+  font-size: 10px;
+  color: #7f9486;
+  letter-spacing: 0.08em;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  #formBox {
+    top: 8px;
+    left: 8px;
+    padding: 6px 10px;
+  }
+
+  #formName {
+    font-size: 12px;
+  }
+}
+
+/* Animations */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes slideIn {
+  from {
+    transform: translateY(-10px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+/* Utility Classes */
+.hidden {
+  display: none !important;
+}
+
+.visible {
+  display: block !important;
+}
