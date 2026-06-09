@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Inverse Hunter - 3D Action RPG</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      width: 100%;
+      height: 100vh;
+      overflow: hidden;
+      font-family: 'Arial', sans-serif;
+      background: #000;
+    }
+
+    #game {
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
+
+    #loader {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.9);
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      z-index: 1000;
+      color: #fff;
+      font-size: 20px;
+    }
+
+    #loader.hidden {
+      display: none;
+    }
+
+    #loader h1 {
+      margin-bottom: 30px;
+      font-size: 48px;
+      text-shadow: 0 0 20px rgba(255, 255, 0, 0.5);
+    }
+
+    #loader-progress {
+      width: 300px;
+      height: 20px;
+      background: rgba(255, 255, 255, 0.1);
+      border: 2px solid #fff;
+      border-radius: 10px;
+      overflow: hidden;
+      margin-bottom: 20px;
+    }
+
+    #loader-bar {
+      height: 100%;
+      background: linear-gradient(90deg, #ffff00, #ff6b6b);
+      width: 0%;
+      transition: width 0.2s ease;
+    }
+
+    #loader-tip {
+      margin-top: 20px;
+      font-size: 14px;
+      color: #aaa;
+      text-align: center;
+      max-width: 400px;
+    }
+
+    /* HUD Styles */
+    #hud {
+      font-family: 'Arial', sans-serif;
+    }
+
+    @keyframes fadeInOut {
+      0% {
+        opacity: 0;
+        transform: translate(-50%, -50%) scale(0.8);
+      }
+      50% {
+        opacity: 1;
+        transform: translate(-50%, -50%) scale(1);
+      }
+      100% {
+        opacity: 0;
+        transform: translate(-50%, -50%) scale(0.8);
+      }
+    }
+
+    /* Mobile responsive */
+    @media (max-width: 768px) {
+      #hud {
+        font-size: 12px;
+      }
+
+      #loader h1 {
+        font-size: 32px;
+      }
+
+      #loader-progress {
+        width: 200px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div id="game"></div>
+
+  <div id="loader">
+    <h1>🐭 Inverse Hunter</h1>
+    <div id="loader-progress">
+      <div id="loader-bar"></div>
+    </div>
+    <div id="loader-text">Loading...</div>
+    <div id="loader-tip">食物連鎖を逆走する、生存と革命の3Dアクション</div>
+  </div>
+
+  <script type="module">
+    // Simulate loading
+    let progress = 0;
+    const progressInterval = setInterval(() => {
+      progress += Math.random() * 30;
+      if (progress > 90) progress = 90;
+      document.getElementById('loader-bar').style.width = progress + '%';
+    }, 200);
+
+    // Import and start game
+    import('./src/mainV2.js').then(() => {
+      progress = 100;
+      document.getElementById('loader-bar').style.width = '100%';
+      clearInterval(progressInterval);
+
+      setTimeout(() => {
+        document.getElementById('loader').classList.add('hidden');
+      }, 500);
+    }).catch((error) => {
+      console.error('Failed to load game:', error);
+      document.getElementById('loader-text').textContent = 'Failed to load game';
+      document.getElementById('loader-tip').textContent = error.message;
+    });
+  </script>
+</body>
+</html>
