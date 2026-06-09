@@ -3,85 +3,133 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-<title>Inverse Hunter — 食物連鎖を逆走する3Dアクション</title>
-<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>%F0%9F%90%AD</text></svg>">
+<title>Inverse Hunter — 食物連鎖を逆走する3DアクションRPG</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>%F0%9F%90%BA</text></svg>">
 <style>
+  :root{
+    --gold:#e7c878; --gold2:#c79b4a; --bg:#05080c;
+    --ink:#e8e2d4; --green:#8fb09c; --red:#e07b7b; --blue:#86a0c0;
+  }
   *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;user-select:none;-webkit-user-select:none;}
-  html,body{width:100%;height:100%;overflow:hidden;background:#05080c;
-    font-family:"Hiragino Kaku Gothic ProN","Yu Gothic","Segoe UI",sans-serif;color:#e8e2d4;}
+  html,body{width:100%;height:100%;overflow:hidden;background:var(--bg);
+    font-family:"Hiragino Kaku Gothic ProN","Yu Gothic","Segoe UI",sans-serif;color:var(--ink);}
   #game{position:fixed;inset:0;}
   canvas{display:block;}
+  .hidden{display:none!important;}
+
+  /* ---------- Loading ---------- */
+  #loader{position:fixed;inset:0;z-index:120;display:flex;flex-direction:column;align-items:center;justify-content:center;
+    background:radial-gradient(circle at 50% 40%,#16242f 0%,#05080c 75%);gap:22px;}
+  #loader .l-title{font-size:clamp(24px,5vw,42px);letter-spacing:.2em;color:#f2e9d0;font-weight:300;text-shadow:0 0 26px #c79b4a99;}
+  #loader .l-bar{width:min(60vw,360px);height:6px;background:#10171c;border-radius:6px;overflow:hidden;border:1px solid #2a3a30;}
+  #loader .l-fill{height:100%;width:0;background:linear-gradient(90deg,#c79b4a,#f0d98a);transition:width .2s;}
+  #loader .l-tip{font-size:12px;color:#7f9486;letter-spacing:.1em;max-width:80%;text-align:center;line-height:1.8;}
 
   /* ---------- Title ---------- */
   #title{position:fixed;inset:0;z-index:50;display:flex;flex-direction:column;align-items:center;justify-content:center;
-    background:radial-gradient(circle at 50% 28%,#16242f 0%,#05080c 70%);text-align:center;padding:20px;}
-  #title h1{font-size:clamp(34px,7vw,74px);letter-spacing:.18em;color:#f2e9d0;text-shadow:0 0 26px #c79b4a99;font-weight:300;}
-  #title .sub{margin-top:10px;font-size:clamp(12px,2.4vw,18px);color:#8fb09c;letter-spacing:.25em;}
-  #title .chain{margin-top:26px;font-size:clamp(20px,4vw,34px);letter-spacing:.1em;}
-  #title .tag{margin-top:24px;font-size:clamp(11px,2vw,15px);color:#b7a98a;font-style:italic;max-width:560px;line-height:1.7;opacity:.85;}
-  #startBtn{margin-top:36px;padding:16px 56px;font-size:18px;letter-spacing:.3em;color:#0a0d12;
-    background:linear-gradient(135deg,#e7c878,#c79b4a);border:none;border-radius:40px;cursor:pointer;
+    background:radial-gradient(circle at 50% 26%,#16242f 0%,#05080c 72%);text-align:center;padding:20px;overflow-y:auto;}
+  #title h1{font-size:clamp(34px,7vw,76px);letter-spacing:.16em;color:#f2e9d0;text-shadow:0 0 30px #c79b4a99;font-weight:300;}
+  #title .sub{margin-top:10px;font-size:clamp(12px,2.4vw,18px);color:var(--green);letter-spacing:.22em;}
+  #title .chain{margin-top:24px;font-size:clamp(20px,4.4vw,36px);letter-spacing:.08em;filter:drop-shadow(0 0 8px #0008);}
+  #title .tag{margin-top:22px;font-size:clamp(11px,2vw,15px);color:#b7a98a;font-style:italic;max-width:560px;line-height:1.7;opacity:.85;}
+  #startBtn,.menuBtn{margin-top:14px;padding:15px 50px;font-size:17px;letter-spacing:.28em;color:#0a0d12;
+    background:linear-gradient(135deg,var(--gold),var(--gold2));border:none;border-radius:40px;cursor:pointer;
     box-shadow:0 0 30px #c79b4a55;transition:transform .15s,box-shadow .2s;}
-  #startBtn:hover{transform:scale(1.05);box-shadow:0 0 52px #c79b4a99;}
-  #title .hint{margin-top:24px;font-size:12px;color:#6d7b72;letter-spacing:.06em;line-height:1.9;}
+  #startBtn:hover,.menuBtn:hover{transform:scale(1.05);box-shadow:0 0 52px #c79b4a99;}
+  .menuRow{margin-top:28px;display:flex;gap:14px;flex-wrap:wrap;justify-content:center;}
+  .menuBtn.alt{background:#0a0f14cc;color:var(--gold);border:1px solid #2a3a30;box-shadow:none;padding:13px 30px;font-size:14px;}
+  #title .hint{margin-top:26px;font-size:12px;color:#6d7b72;letter-spacing:.06em;line-height:1.9;max-width:620px;}
   #title .hint b{color:#bcae8c;font-weight:600;}
 
   /* ---------- HUD ---------- */
   #hud{position:fixed;inset:0;z-index:20;pointer-events:none;}
   #formBox{position:absolute;top:12px;left:12px;display:flex;gap:9px;align-items:center;
-    background:#0a0f14bb;padding:8px 14px;border-radius:30px;border:1px solid #2a3a30;backdrop-filter:blur(5px);}
+    background:#0a0f14cc;padding:8px 14px;border-radius:30px;border:1px solid #2a3a30;backdrop-filter:blur(5px);}
   #formEmoji{font-size:30px;line-height:1;}
   #formName{font-size:14px;letter-spacing:.1em;color:#dfe7df;}
   #formType{font-size:10px;color:#7f9486;letter-spacing:.08em;}
+  #lvlBadge{margin-left:6px;font-size:11px;color:var(--gold);background:#0a0f14;border:1px solid #3a4a3a;border-radius:10px;padding:2px 8px;letter-spacing:.06em;}
 
-  #instinctWrap{position:absolute;top:16px;right:14px;width:190px;}
-  #instinctLabel{font-size:10px;letter-spacing:.2em;color:#9fb0a4;text-align:right;margin-bottom:4px;}
-  #instinctBar{height:10px;background:#10171c;border-radius:6px;overflow:hidden;border:1px solid #2a3a30;}
-  #instinctFill{height:100%;width:100%;background:linear-gradient(90deg,#c79b4a,#f0d98a);transition:width .12s;}
+  /* bars under form box */
+  #bars{position:absolute;top:58px;left:12px;width:230px;display:flex;flex-direction:column;gap:6px;}
+  .bar{height:11px;background:#10171c;border-radius:6px;overflow:hidden;border:1px solid #2a3a30;position:relative;}
+  .bar > i{position:absolute;left:0;top:0;height:100%;width:100%;transition:width .14s;border-radius:6px;}
+  .barLbl{font-size:9px;letter-spacing:.18em;color:#9fb0a4;margin-bottom:2px;display:flex;justify-content:space-between;}
+  #hpFill{background:linear-gradient(90deg,#8a3a3a,#e07b7b);}
+  #stFill{background:linear-gradient(90deg,#3a6a8a,#7bd0e0);}
+  #inFill{background:linear-gradient(90deg,#c79b4a,#f0d98a);}
+  #xpFill{background:linear-gradient(90deg,#5a8a3a,#aee07b);}
+  #barXp .barLbl{color:#9fc08a;}
 
-  #healthWrap{position:absolute;right:14px;top:48px;width:190px;}
-  #healthLabel{font-size:10px;letter-spacing:.2em;color:#c08f8f;text-align:right;margin-bottom:4px;}
-  #healthBar{height:10px;background:#1c1012;border-radius:6px;overflow:hidden;border:1px solid #3a2a2a;}
-  #healthFill{height:100%;width:100%;background:linear-gradient(90deg,#8a3a3a,#e07b7b);transition:width .18s;}
-
-  /* boss health bar (top center) */
-  #bossWrap{position:absolute;top:14px;left:50%;transform:translateX(-50%);width:min(54vw,520px);opacity:0;transition:opacity .35s;}
-  #bossName{font-size:12px;letter-spacing:.12em;color:#f0c0c0;text-align:center;margin-bottom:4px;text-shadow:0 0 8px #000;}
-  #bossBar{height:12px;background:#1a0c0c;border-radius:7px;overflow:hidden;border:1px solid #5a2a2a;}
+  /* boss health bar */
+  #bossWrap{position:absolute;top:14px;left:50%;transform:translateX(-50%);width:min(58vw,560px);opacity:0;transition:opacity .35s;}
+  #bossName{font-size:13px;letter-spacing:.12em;color:#f0c0c0;text-align:center;margin-bottom:4px;text-shadow:0 0 8px #000;}
+  #bossBar{height:13px;background:#1a0c0c;border-radius:7px;overflow:hidden;border:1px solid #5a2a2a;position:relative;}
   #bossFill{height:100%;width:100%;background:linear-gradient(90deg,#b03030,#ff6b6b);transition:width .18s;}
+  #bossFillBack{position:absolute;left:0;top:0;height:100%;width:100%;background:#ffffff55;transition:width .6s ease-out .15s;}
 
-  #formWheel{position:absolute;left:50%;transform:translateX(-50%);top:84px;display:flex;gap:6px;z-index:21;}
-  .formChip{width:44px;height:44px;border-radius:12px;background:#0a0f14bb;border:1px solid #243029;
-    display:flex;align-items:center;justify-content:center;font-size:22px;opacity:.32;transition:.2s;
+  #formWheel{position:absolute;left:50%;transform:translateX(-50%);top:96px;display:flex;gap:6px;z-index:21;}
+  .formChip{width:42px;height:42px;border-radius:12px;background:#0a0f14cc;border:1px solid #243029;
+    display:flex;align-items:center;justify-content:center;font-size:21px;opacity:.32;transition:.2s;
     backdrop-filter:blur(3px);pointer-events:auto;cursor:pointer;position:relative;}
   .formChip.unlocked{opacity:.7;}
-  .formChip.active{opacity:1;border-color:#e7c878;box-shadow:0 0 16px #c79b4a99;transform:scale(1.14);}
+  .formChip.active{opacity:1;border-color:var(--gold);box-shadow:0 0 16px #c79b4a99;transform:scale(1.14);}
   .formChip.locked::after{content:"🔒";position:absolute;font-size:11px;bottom:-2px;right:-2px;}
   .formChip .key{position:absolute;top:-7px;left:50%;transform:translateX(-50%);font-size:9px;color:#7f9486;background:#0a0f14;padding:0 4px;border-radius:4px;}
 
-  #objective{position:absolute;top:140px;left:50%;transform:translateX(-50%);font-size:12px;letter-spacing:.1em;
-    color:#bcae8c;background:#0a0f14bb;padding:6px 16px;border-radius:20px;border:1px solid #2a3a30;text-align:center;max-width:80%;}
-  #senseTag{position:absolute;left:12px;top:54px;font-size:11px;color:#86a0c0;letter-spacing:.1em;opacity:0;transition:.3s;}
-  #comboTag{position:absolute;left:50%;bottom:120px;transform:translateX(-50%);font-size:clamp(16px,4vw,30px);
+  /* skill cooldown icons */
+  #skillBar{position:absolute;right:14px;bottom:14px;display:flex;gap:8px;z-index:21;}
+  .skill{width:54px;height:54px;border-radius:14px;background:#0a0f14cc;border:1px solid #2a3a30;position:relative;
+    display:flex;flex-direction:column;align-items:center;justify-content:center;backdrop-filter:blur(4px);overflow:hidden;}
+  .skill .si{font-size:22px;}
+  .skill .sk{position:absolute;top:2px;left:4px;font-size:9px;color:#7f9486;}
+  .skill .cd{position:absolute;inset:0;background:#000a;transform-origin:bottom;transform:scaleY(0);transition:transform .1s linear;}
+  .skill .nm{font-size:8px;color:#9fb0a4;letter-spacing:.04em;position:absolute;bottom:2px;}
+
+  #objective{position:absolute;top:150px;left:50%;transform:translateX(-50%);font-size:12px;letter-spacing:.08em;
+    color:#bcae8c;background:#0a0f14cc;padding:6px 16px;border-radius:20px;border:1px solid #2a3a30;text-align:center;max-width:80%;}
+  #questLog{position:absolute;left:12px;bottom:130px;width:240px;font-size:11px;color:#c8cabd;background:#0a0f14aa;
+    border:1px solid #243029;border-radius:10px;padding:8px 12px;backdrop-filter:blur(4px);line-height:1.6;max-width:60vw;}
+  #questLog .qt{color:var(--gold);letter-spacing:.08em;margin-bottom:4px;font-size:11px;}
+  #questLog .qi{color:#a8b8a8;}
+  #questLog .qi.done{color:#6a8a6a;text-decoration:line-through;}
+
+  #senseTag{position:absolute;left:12px;top:160px;font-size:11px;color:var(--blue);letter-spacing:.1em;opacity:0;transition:.3s;}
+  #comboTag{position:absolute;left:50%;bottom:140px;transform:translateX(-50%);font-size:clamp(16px,4vw,32px);
     color:#ffd86b;letter-spacing:.06em;font-weight:700;opacity:0;text-shadow:0 0 14px #c79b4a;transition:opacity .2s;}
+  #dmgLayer{position:fixed;inset:0;z-index:19;pointer-events:none;overflow:hidden;}
+  .dmgPop{position:absolute;font-weight:800;font-size:18px;color:#ffe066;text-shadow:0 1px 4px #000;
+    transform:translate(-50%,-50%);transition:transform .6s ease-out,opacity .6s;opacity:1;}
+  .dmgPop.crit{color:#ff7b4b;font-size:26px;}
+  .dmgPop.heal{color:#9fe07b;}
+  .dmgPop.player{color:#ff6b6b;}
 
-  #banner{position:absolute;top:46%;left:50%;transform:translate(-50%,-50%);text-align:center;
-    font-size:clamp(20px,5vw,42px);letter-spacing:.08em;color:#f2e9d0;text-shadow:0 0 26px #000,0 0 40px #c79b4a55;
+  #banner{position:absolute;top:42%;left:50%;transform:translate(-50%,-50%);text-align:center;
+    font-size:clamp(20px,5vw,44px);letter-spacing:.08em;color:#f2e9d0;text-shadow:0 0 26px #000,0 0 40px #c79b4a55;
     opacity:0;transition:opacity .5s;pointer-events:none;max-width:92%;}
-  #subBanner{position:absolute;top:calc(46% + 44px);left:50%;transform:translateX(-50%);text-align:center;
-    font-size:clamp(12px,2.6vw,18px);color:#9fb0a4;letter-spacing:.12em;opacity:0;transition:opacity .5s;max-width:90%;}
+  #subBanner{position:absolute;top:calc(42% + 46px);left:50%;transform:translateX(-50%);text-align:center;
+    font-size:clamp(12px,2.6vw,18px);color:var(--green);letter-spacing:.12em;opacity:0;transition:opacity .5s;max-width:90%;}
 
-  /* aim reticle */
-  #reticle{position:fixed;left:50%;top:50%;width:34px;height:34px;margin:-17px 0 0 -17px;z-index:22;pointer-events:none;
-    opacity:0;transition:opacity .15s;}
+  #toast{position:absolute;left:50%;top:26px;transform:translateX(-50%);display:flex;flex-direction:column;gap:6px;align-items:center;z-index:23;}
+  .toastItem{background:#0a0f14e0;border:1px solid #3a4a3a;border-radius:20px;padding:7px 18px;font-size:12px;letter-spacing:.06em;
+    color:#e2dcc8;box-shadow:0 4px 14px #0007;animation:toastIn .3s ease-out;max-width:80vw;text-align:center;}
+  .toastItem b{color:var(--gold);}
+  @keyframes toastIn{from{opacity:0;transform:translateY(-10px);}to{opacity:1;transform:none;}}
+
+  /* reticle / lock */
+  #reticle{position:fixed;left:50%;top:50%;width:34px;height:34px;margin:-17px 0 0 -17px;z-index:22;pointer-events:none;opacity:0;transition:opacity .15s;}
   #reticle.show{opacity:.9;}
   #reticle .ring{position:absolute;inset:0;border:2px solid #ffe066;border-radius:50%;box-shadow:0 0 8px #c79b4a;}
   #reticle .dot{position:absolute;left:50%;top:50%;width:4px;height:4px;margin:-2px 0 0 -2px;background:#fff;border-radius:50%;}
   #reticle.locked .ring{border-color:#ff6b6b;box-shadow:0 0 12px #ff6b6b;}
-
-  /* lock-on marker */
   #lockMark{position:fixed;width:46px;height:46px;margin:-23px 0 0 -23px;z-index:22;pointer-events:none;opacity:0;
     border:2px solid #ff6b6b;border-radius:8px;box-shadow:0 0 12px #ff6b6b88;transition:opacity .2s;}
+  #lockMark::before,#lockMark::after{content:"";position:absolute;width:10px;height:10px;border-color:#ff6b6b;}
+
+  /* minimap */
+  #minimap{position:absolute;right:14px;top:64px;width:128px;height:128px;border-radius:50%;overflow:hidden;
+    border:2px solid #2a3a30;background:#0a0f14cc;backdrop-filter:blur(4px);}
+  #minimap canvas{width:100%;height:100%;}
 
   /* ---------- Mobile ---------- */
   #mobile{position:fixed;inset:0;z-index:30;pointer-events:none;display:none;}
@@ -90,40 +138,123 @@
   #joyKnob{position:absolute;left:50%;top:50%;width:60px;height:60px;margin:-30px 0 0 -30px;border-radius:50%;
     background:#e7c87899;border:2px solid #ffffff44;}
   #aimPad{position:absolute;right:0;bottom:0;width:55%;height:100%;pointer-events:auto;}
-  #btns{position:absolute;right:20px;bottom:20px;width:230px;height:200px;pointer-events:none;}
+  #btns{position:absolute;right:18px;bottom:18px;width:240px;height:220px;pointer-events:none;}
   .abtn{position:absolute;border-radius:50%;pointer-events:auto;display:flex;align-items:center;justify-content:center;
-    font-size:12px;font-weight:bold;color:#0a0d12;border:2px solid #ffffff44;text-align:center;line-height:1.1;}
-  #btnA{right:6px;bottom:70px;width:74px;height:74px;background:#d96b6bdd;font-size:14px;}
-  #btnB{right:88px;bottom:26px;width:62px;height:62px;background:#6b9ad9dd;}
-  #btnJump{right:96px;bottom:108px;width:58px;height:58px;background:#7bd98bdd;}
-  #btnY{right:8px;bottom:156px;width:50px;height:50px;background:#c79b4add;font-size:11px;}
-  #btnLock{left:170px;bottom:96px;width:52px;height:52px;background:#b08bd9dd;font-size:11px;}
+    font-size:12px;font-weight:bold;color:#0a0d12;border:2px solid #ffffff44;text-align:center;line-height:1.1;
+    transition:transform .08s;}
+  .abtn:active{transform:scale(.9);}
+  #btnA{right:6px;bottom:74px;width:76px;height:76px;background:#d96b6bdd;font-size:14px;}
+  #btnB{right:90px;bottom:28px;width:62px;height:62px;background:#6b9ad9dd;}
+  #btnJump{right:98px;bottom:112px;width:58px;height:58px;background:#7bd98bdd;}
+  #btnDash{right:4px;bottom:160px;width:50px;height:50px;background:#c79b4add;font-size:11px;}
+  #btnLock{left:172px;bottom:96px;width:52px;height:52px;background:#b08bd9dd;font-size:11px;}
+  #btnY{left:172px;bottom:156px;width:46px;height:46px;background:#8bd9c0dd;font-size:10px;}
+  #mFormBar{position:absolute;left:50%;bottom:16px;transform:translateX(-50%);display:flex;gap:6px;pointer-events:auto;}
 
   #rotateNote{position:fixed;inset:0;z-index:60;display:none;align-items:center;justify-content:center;
     background:#05080c;color:#bcae8c;font-size:16px;letter-spacing:.2em;text-align:center;flex-direction:column;gap:14px;}
   #fps{position:absolute;left:12px;bottom:12px;font-size:10px;color:#3d4b42;letter-spacing:.1em;}
+  #topRightBtns{position:absolute;right:150px;top:14px;display:flex;gap:6px;z-index:24;pointer-events:auto;}
+  .miniBtn{width:34px;height:34px;border-radius:9px;background:#0a0f14cc;border:1px solid #2a3a30;color:#bcae8c;
+    font-size:16px;display:flex;align-items:center;justify-content:center;cursor:pointer;backdrop-filter:blur(4px);}
+  .miniBtn:hover{border-color:var(--gold);color:var(--gold);}
+
+  /* ---------- Panels (menu/skill/inventory) ---------- */
+  .panel{position:fixed;inset:0;z-index:70;display:none;align-items:center;justify-content:center;
+    background:#04060ad8;backdrop-filter:blur(6px);padding:18px;}
+  .panel.show{display:flex;}
+  .card{background:#0b1016f2;border:1px solid #2a3a30;border-radius:18px;max-width:760px;width:100%;max-height:90vh;
+    overflow-y:auto;padding:24px 26px;box-shadow:0 10px 50px #000a;}
+  .card h2{font-size:22px;letter-spacing:.14em;color:#f2e9d0;font-weight:400;margin-bottom:4px;}
+  .card .csub{font-size:12px;color:#7f9486;letter-spacing:.1em;margin-bottom:18px;}
+  .card .close{position:absolute;top:16px;right:18px;font-size:24px;color:#7f9486;cursor:pointer;}
+  .card .close:hover{color:var(--gold);}
+  .tier{margin-bottom:16px;}
+  .tier h3{font-size:13px;color:var(--green);letter-spacing:.12em;margin-bottom:8px;border-bottom:1px solid #1c2a22;padding-bottom:4px;}
+  .skNodes{display:flex;gap:10px;flex-wrap:wrap;}
+  .skNode{width:130px;background:#0d141a;border:1px solid #243029;border-radius:12px;padding:10px 12px;cursor:pointer;
+    transition:.15s;position:relative;}
+  .skNode:hover{border-color:var(--gold);transform:translateY(-2px);}
+  .skNode.owned{border-color:#5a8a3a;background:#101a10;}
+  .skNode.cant{opacity:.45;cursor:not-allowed;}
+  .skNode .sni{font-size:24px;}
+  .skNode .snn{font-size:12px;color:#e2dcc8;margin:4px 0;letter-spacing:.04em;}
+  .skNode .snd{font-size:10px;color:#8f9c8f;line-height:1.5;}
+  .skNode .snc{font-size:10px;color:var(--gold);margin-top:6px;}
+  .skNode .own{position:absolute;top:6px;right:8px;color:#7bd98b;font-size:12px;}
+  #spPoints{color:var(--gold);font-size:14px;}
+  .invGrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:10px;}
+  .invItem{background:#0d141a;border:1px solid #243029;border-radius:10px;padding:10px;font-size:12px;}
+  .invItem .ii{font-size:22px;}
+  .invItem .inn{color:#e2dcc8;margin:3px 0;}
+  .invItem .idd{color:#8f9c8f;font-size:10px;line-height:1.4;}
+  .invItem button{margin-top:6px;width:100%;padding:5px;font-size:11px;background:var(--gold2);color:#0a0d12;border:none;border-radius:6px;cursor:pointer;}
+  .statRow{display:flex;justify-content:space-between;font-size:12px;color:#c8cabd;padding:5px 0;border-bottom:1px solid #141c18;}
+  .statRow b{color:var(--gold);}
+  .equipRow{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px;}
+  .equipChip{background:#0d141a;border:1px solid #243029;border-radius:8px;padding:6px 10px;font-size:11px;color:#c8cabd;cursor:pointer;}
+  .equipChip.on{border-color:var(--gold);color:var(--gold);}
+
+  #deathScreen{position:fixed;inset:0;z-index:80;display:none;flex-direction:column;align-items:center;justify-content:center;
+    background:radial-gradient(circle at 50% 50%,#2a0c0c 0%,#05080c 75%);gap:18px;text-align:center;}
+  #deathScreen h2{font-size:clamp(28px,6vw,52px);color:#e07b7b;letter-spacing:.2em;font-weight:300;text-shadow:0 0 30px #8a0000;}
+  #deathScreen p{color:#9fb0a4;font-size:14px;letter-spacing:.1em;}
+
+  #endScreen{position:fixed;inset:0;z-index:80;display:none;flex-direction:column;align-items:center;justify-content:center;
+    background:radial-gradient(circle at 50% 40%,#16242f 0%,#05080c 75%);gap:18px;text-align:center;padding:20px;}
+  #endScreen h2{font-size:clamp(26px,6vw,50px);color:#f2e9d0;letter-spacing:.16em;font-weight:300;text-shadow:0 0 30px #c79b4a99;}
+  #endScreen p{color:#b7a98a;font-size:14px;line-height:1.9;max-width:560px;letter-spacing:.06em;}
+
+  .vignette{position:fixed;inset:0;z-index:18;pointer-events:none;box-shadow:inset 0 0 200px #000a;opacity:.5;}
+  #hurtVig{position:fixed;inset:0;z-index:18;pointer-events:none;box-shadow:inset 0 0 160px #b00000;opacity:0;transition:opacity .25s;}
+  #senseVig{position:fixed;inset:0;z-index:17;pointer-events:none;opacity:0;transition:opacity .4s;mix-blend-mode:screen;}
 </style>
 </head>
 <body>
 <div id="game"></div>
 
-<div id="hud">
-  <div id="formBox"><span id="formEmoji">🐭</span><div><div id="formName">ネズミ</div><div id="formType">隠密・逃走型</div></div></div>
-  <div id="instinctWrap"><div id="instinctLabel">本能 INSTINCT</div><div id="instinctBar"><div id="instinctFill"></div></div></div>
-  <div id="healthWrap"><div id="healthLabel">体力 VITALITY</div><div id="healthBar"><div id="healthFill"></div></div></div>
-  <div id="bossWrap"><div id="bossName"></div><div id="bossBar"><div id="bossFill"></div></div></div>
+<!-- Loading -->
+<div id="loader">
+  <div class="l-title">INVERSE HUNTER</div>
+  <div class="l-bar"><div class="l-fill" id="loadFill"></div></div>
+  <div class="l-tip" id="loadTip">世界を生成しています…</div>
+</div>
+
+<!-- HUD -->
+<div class="vignette"></div>
+<div id="hurtVig"></div>
+<div id="senseVig"></div>
+<div id="hud" class="hidden">
+  <div id="formBox"><span id="formEmoji">🐭</span><div><div id="formName">ネズミ</div><div id="formType">隠密・逃走型</div></div><span id="lvlBadge">Lv.1</span></div>
+  <div id="bars">
+    <div><div class="barLbl"><span>体力 HP</span><span id="hpTxt"></span></div><div class="bar"><i id="hpFill"></i></div></div>
+    <div><div class="barLbl"><span>気力 STAMINA</span><span></span></div><div class="bar"><i id="stFill"></i></div></div>
+    <div><div class="barLbl"><span>本能 INSTINCT</span><span></span></div><div class="bar"><i id="inFill"></i></div></div>
+    <div id="barXp"><div class="barLbl"><span>経験 EXP</span><span id="xpTxt"></span></div><div class="bar"><i id="xpFill"></i></div></div>
+  </div>
+  <div id="bossWrap"><div id="bossName"></div><div id="bossBar"><div id="bossFillBack"></div><div id="bossFill"></div></div></div>
   <div id="formWheel"></div>
-  <div id="objective">キツネを倒せ — 草むらに隠れて本能を回復し、隙を突く</div>
+  <div id="skillBar"></div>
+  <div id="minimap"><canvas id="mmCanvas" width="128" height="128"></canvas></div>
+  <div id="objective">序章 — 草原で生き延びろ</div>
+  <div id="questLog"></div>
   <div id="senseTag"></div>
   <div id="comboTag"></div>
   <div id="banner"></div>
   <div id="subBanner"></div>
-  <div id="fps"></div>
+  <div id="toast"></div>
+  <div id="topRightBtns">
+    <div class="miniBtn" id="btnSkillPanel" title="スキル (T)">🌿</div>
+    <div class="miniBtn" id="btnInvPanel" title="インベントリ (I)">🎒</div>
+    <div class="miniBtn" id="btnMenu" title="メニュー (Esc)">⏸</div>
+  </div>
 </div>
+<div id="dmgLayer"></div>
 
 <div id="reticle"><div class="ring"></div><div class="dot"></div></div>
 <div id="lockMark"></div>
 
+<!-- Mobile -->
 <div id="mobile">
   <div id="joy"><div id="joyKnob"></div></div>
   <div id="aimPad"></div>
@@ -131,933 +262,543 @@
     <div class="abtn" id="btnA">攻撃</div>
     <div class="abtn" id="btnB">スキル</div>
     <div class="abtn" id="btnJump">跳</div>
-    <div class="abtn" id="btnY">本能</div>
+    <div class="abtn" id="btnDash">ダッシュ</div>
     <div class="abtn" id="btnLock">ロック</div>
+    <div class="abtn" id="btnY">本能</div>
   </div>
+  <div id="mFormBar"></div>
 </div>
 
+<div id="rotateNote">📱 端末を横向きにしてください<br><span style="font-size:12px;color:#6d7b72;">Please rotate to landscape</span></div>
+<div id="fps"></div>
+
+<!-- Title -->
 <div id="title">
   <h1>INVERSE HUNTER</h1>
-  <div class="sub">食物連鎖を逆走する、生存と革命の3Dアクション</div>
+  <div class="sub">食物連鎖を逆走する、生存と革命の3DアクションRPG</div>
   <div class="chain">🐭 → 🦊 → 🐍 → 🦅 → 🐺 → 🧍 → ⚡</div>
   <div class="tag">"You were prey. Now you are everything.<br>But everything has something to lose."</div>
-  <button id="startBtn">START</button>
+  <div class="menuRow">
+    <button id="startBtn">▶ 物語を始める</button>
+    <button class="menuBtn alt" id="continueBtn">続きから</button>
+  </div>
   <div class="hint">
-    <b>PC</b>　移動 WASD / 視点 マウス（クリックで照準ロック）<br>
-    攻撃 左クリック・J / スキル 右クリック・K / ジャンプ Space<br>
-    照準ロックオン Q / 本能 E / ダッシュ Shift / 形態切替 1〜5<br>
-    <b>スマホ</b>　左スティック移動 / 右側ドラッグで視点・照準<br>
-    A 攻撃 / B スキル / 跳 ジャンプ / 本能 / ロック で敵ロックオン
+    <b>PC操作:</b> 移動 <b>WASD / 矢印</b>（W=後退・D=左 ※リクエスト通り反転）・ 視点<b>マウス</b>・ 攻撃<b>左クリック/J</b>・ スキル<b>右クリック/K</b>・ ジャンプ<b>Space</b>・ ダッシュ<b>Shift</b>・ ロックオン<b>Q</b>・ 本能/咆哮<b>E</b>・ 形態<b>1〜6</b>・ スキル<b>T</b>・ 鞄<b>I</b><br>
+    <b>スマホ:</b> 左スティック移動・右ドラッグで視点・各ボタンで戦闘
   </div>
 </div>
 
-<div id="rotateNote">📱↻<div>横画面にしてプレイしてください</div></div>
+<!-- Death -->
+<div id="deathScreen">
+  <h2>YOU DIED</h2>
+  <p id="deathSub">食物連鎖の底で、また狩られた…</p>
+  <button class="menuBtn" id="reviveBtn">最後のチェックポイントから復活</button>
+</div>
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<!-- Ending -->
+<div id="endScreen">
+  <h2 id="endTitle">革命の果てに</h2>
+  <p id="endText"></p>
+  <button class="menuBtn" id="endBtn">タイトルへ</button>
+</div>
+
+<!-- Skill panel -->
+<div class="panel" id="skillPanel"><div class="card" style="position:relative;">
+  <span class="close" data-close="skillPanel">×</span>
+  <h2>スキルツリー</h2><div class="csub">スキルポイント: <span id="spPoints">0</span> — 各形態の能力を解放・強化</div>
+  <div id="skillTreeBody"></div>
+</div></div>
+
+<!-- Inventory panel -->
+<div class="panel" id="invPanel"><div class="card" style="position:relative;">
+  <span class="close" data-close="invPanel">×</span>
+  <h2>装備とアイテム</h2><div class="csub">所持金 <span id="goldTxt">0</span> 🪙 — 倒した敵が落とすアイテムで強くなる</div>
+  <div style="display:flex;gap:24px;flex-wrap:wrap;">
+    <div style="flex:1;min-width:240px;">
+      <h3 style="font-size:13px;color:var(--green);letter-spacing:.12em;margin:6px 0;">ステータス</h3>
+      <div id="statBody"></div>
+      <h3 style="font-size:13px;color:var(--green);letter-spacing:.12em;margin:12px 0 4px;">装備中の遺物</h3>
+      <div class="equipRow" id="equipRow"></div>
+    </div>
+    <div style="flex:1.2;min-width:260px;">
+      <h3 style="font-size:13px;color:var(--green);letter-spacing:.12em;margin:6px 0;">所持アイテム</h3>
+      <div class="invGrid" id="invGrid"></div>
+    </div>
+  </div>
+</div></div>
+
+<!-- Pause menu -->
+<div class="panel" id="menuPanel"><div class="card" style="position:relative;max-width:420px;text-align:center;">
+  <span class="close" data-close="menuPanel">×</span>
+  <h2>一時停止</h2><div class="csub">Inverse Hunter</div>
+  <div style="display:flex;flex-direction:column;gap:12px;align-items:center;">
+    <button class="menuBtn" id="resumeBtn">▶ 再開</button>
+    <button class="menuBtn alt" id="saveBtn">💾 セーブ</button>
+    <button class="menuBtn alt" id="quitBtn">タイトルへ戻る</button>
+    <div style="margin-top:10px;font-size:11px;color:#7f9486;letter-spacing:.08em;line-height:1.8;">
+      音量 <input type="range" id="volSlider" min="0" max="100" value="60" style="vertical-align:middle;width:120px;"><br>
+      <label><input type="checkbox" id="invertY"> 視点Y軸を反転</label>
+    </div>
+  </div>
+</div></div>
+
+<script src="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js"></script>
 <script>
-/* =====================================================================
-   INVERSE HUNTER v2 — single-file Three.js action game
-   Major rewrite: aimable attacks, lock-on, fixed controls, dash,
-   projectile/melee combat, juicy feedback, better AI & visuals.
-   ===================================================================== */
-const GAME=(()=>{ 'use strict';
-let scene,camera,renderer,clock;
-const W=()=>innerWidth,H=()=>innerHeight;
-let running=false;
+"use strict";
+/* =====================================================================================
+   INVERSE HUNTER — 3D Action RPG (single file, Three.js)
+   食物連鎖を逆走する生存と革命の物語。原神/ゼルダ志向の大規模アクションRPG。
+   ===================================================================================== */
 
-/* ---------- FORMS ---------- */
-const FORMS={
-  mouse:{key:'mouse',emoji:'🐭',name:'ネズミ',type:'隠密・逃走型',color:0x9a8f80,
-    speed:14,size:0.55,jump:8,instinctCost:0,fly:false,ranged:false,
-    sense:'超音波視覚',tint:0x2a1a55,unlocked:true,atkCD:0.30,reach:3.2,dmg:7,
-    ability:'狭所通過 / 真下から急所を突く',recover:'草むらに隠れる'},
-  fox:{key:'fox',emoji:'🦊',name:'キツネ',type:'アジリティ型',color:0xc0602a,
-    speed:19,size:0.85,jump:11,instinctCost:25,fly:false,ranged:false,
-    sense:'嗅覚追跡',tint:0x3a2410,unlocked:false,atkCD:0.26,reach:3.6,dmg:10,
-    ability:'高速ダッシュ / 連続斬撃',recover:'獲物を追尾して走る'},
-  snake:{key:'snake',emoji:'🐍',name:'ニシキヘビ',type:'待機・締め付け型',color:0x4a7a3a,
-    speed:11,size:0.7,jump:5,instinctCost:25,fly:false,ranged:true,
-    sense:'熱源探知',tint:0x103a18,unlocked:false,atkCD:0.5,reach:24,dmg:14,
-    ability:'毒の射撃 / 熱源で暗闇でも敵が視える',recover:'静止して待つ'},
-  eagle:{key:'eagle',emoji:'🦅',name:'イヌワシ',type:'空中制圧型',color:0x6b5230,
-    speed:23,size:1.0,jump:0,instinctCost:25,fly:true,ranged:false,
-    sense:'超広域視野',tint:0x102030,unlocked:false,atkCD:0.4,reach:4.5,dmg:13,
-    ability:'飛行 / 急降下即死攻撃（真下が死角）',recover:'上昇気流に乗り滑空'},
-  wolf:{key:'wolf',emoji:'🐺',name:'オオカミ',type:'群れ指揮型',color:0x808890,
-    speed:17,size:1.1,jump:10,instinctCost:25,fly:false,ranged:false,
-    sense:'広角暗視',tint:0x101820,unlocked:false,atkCD:0.34,reach:4.2,dmg:15,
-    ability:'群れコマンド / 遠吠え衝撃波',recover:'遠吠えで群れに号令'},
+/* ============================ 0. 汎用ユーティリティ ============================ */
+const TAU = Math.PI * 2;
+const clamp = (v, a, b) => v < a ? a : (v > b ? b : v);
+const lerp = (a, b, t) => a + (b - a) * t;
+const rand = (a = 1, b) => b === undefined ? Math.random() * a : a + Math.random() * (b - a);
+const randInt = (a, b) => Math.floor(rand(a, b + 1));
+const pick = arr => arr[Math.floor(Math.random() * arr.length)];
+const dist2 = (ax, az, bx, bz) => { const dx = ax - bx, dz = az - bz; return dx * dx + dz * dz; };
+const smoothDamp = (cur, target, vel, smooth, dt) => {
+  smooth = Math.max(0.0001, smooth);
+  const omega = 2 / smooth;
+  const x = omega * dt;
+  const exp = 1 / (1 + x + 0.48 * x * x + 0.235 * x * x * x);
+  let change = cur - target;
+  const temp = (vel.v + omega * change) * dt;
+  vel.v = (vel.v - omega * temp) * exp;
+  return target + (change + temp) * exp;
 };
-const ORDER=['mouse','fox','snake','eagle','wolf'];
-const KEYMAP={'1':'mouse','2':'fox','3':'snake','4':'eagle','5':'wolf'};
+const angLerp = (a, b, t) => {
+  let d = ((b - a + Math.PI) % TAU) - Math.PI;
+  if (d < -Math.PI) d += TAU;
+  return a + d * t;
+};
+function approachAngle(cur, target, maxStep){
+  let d = ((target - cur + Math.PI) % TAU) - Math.PI;
+  if (d < -Math.PI) d += TAU;
+  if (Math.abs(d) <= maxStep) return target;
+  return cur + Math.sign(d) * maxStep;
+}
 
-/* ---------- STAGES ---------- */
-const STAGES=[
- {id:1,name:'草原の夜明け',tag:'STAGE 01 — 草原の夜明け',
-  obj:'キツネを倒せ — 草むらに隠れ本能を回復し、隙を突く',
-  ground:0x2f4a32,fog:0x14202c,sky:0x14202c,
-  boss:{form:'fox',emoji:'🦊',name:'キツネ群れ長',hp:80,weakness:'mouse',
-        tip:'弱点：ネズミ形態で真下/背後から急所を突くと×3ダメージ',speed:9,color:0xc0602a,size:1.5,style:'chase'},
-  unlock:'fox',emotion:'恐怖 → 解放感'},
- {id:2,name:'湿地のヘビ王国',tag:'STAGE 02 — 湿地のヘビ王国',
-  obj:'ヘビ女王を討て — キツネの速さで翻弄しろ',
-  ground:0x24382e,fog:0x12201a,sky:0x12201a,
-  boss:{form:'snake',emoji:'🐍',name:'ヘビ女王',hp:120,weakness:'fox',
-        tip:'弱点：地上の熱を感知できない。キツネの速攻が×3',speed:6,color:0x4a7a3a,size:1.8,style:'ranged'},
-  unlock:'snake',emotion:'戦略的思考'},
- {id:3,name:'断崖のワシの縄張り',tag:'STAGE 03 — 断崖のワシの縄張り',
-  obj:'ワシ王を討て — 真下の死角を突け',
-  ground:0x3a342a,fog:0x101824,sky:0x16202e,
-  boss:{form:'eagle',emoji:'🦅',name:'ワシ王',hp:160,weakness:'mouse',
-        tip:'弱点：真下180度が死角。ネズミで真下から攻撃せよ',speed:14,color:0x6b5230,size:2.0,style:'dive'},
-  unlock:'eagle',emotion:'全能感・爽快感'},
- {id:4,name:'森のオオカミ群れ',tag:'STAGE 04 — 森のオオカミ群れ',
-  obj:'オオカミ群れ長を討て — ヘビで首魁を締め付けろ',
-  ground:0x223024,fog:0x0e1812,sky:0x12201a,
-  boss:{form:'wolf',emoji:'🐺',name:'オオカミ群れ長',hp:200,weakness:'snake',
-        tip:'弱点：群れが分断されると弱体化。ヘビの射撃が×3',speed:15,color:0x808890,size:1.9,style:'pack'},
-  unlock:'wolf',emotion:'仲間との連帯感'},
- {id:5,name:'人間の村（転換点）',tag:'STAGE 05 — 人間の村',
-  obj:'人間文明の脅威 — 仲間を守り、選択せよ',
-  ground:0x40382c,fog:0x1a1610,sky:0x241c12,
-  boss:{form:'human',emoji:'🧍',name:'村長',hp:260,weakness:'wolf',
-        tip:'弱点：火と群れの連携。オオカミの遠吠え衝撃波が刺さる',speed:11,color:0x9a7050,size:2.0,style:'chase'},
-  unlock:null,emotion:'重さ・道徳的ジレンマ',choice:true},
- {id:6,name:'文明の心臓部（最終章）',tag:'STAGE 06 — 文明の心臓部',
-  obj:'真のボス — 生態系を破壊するシステムと対峙せよ',
-  ground:0x2a2a32,fog:0x0a0a12,sky:0x12101a,
-  boss:{form:'system',emoji:'⚡',name:'破壊のシステム',hp:380,weakness:'all',
-        tip:'弱点：全形態を切り替えながら核に攻撃を当て続けろ',speed:8,color:0x9a3acc,size:3.0,style:'orbit'},
-  unlock:null,emotion:'使命感・カタルシス'},
+/* small deterministic noise for terrain */
+function makeNoise(seed){
+  let s = seed >>> 0;
+  const r = () => { s = (s * 1664525 + 1013904223) >>> 0; return s / 4294967296; };
+  const perm = new Uint8Array(512);
+  const p = new Uint8Array(256);
+  for (let i=0;i<256;i++) p[i]=i;
+  for (let i=255;i>0;i--){ const j = Math.floor(r()*(i+1)); const t=p[i];p[i]=p[j];p[j]=t; }
+  for (let i=0;i<512;i++) perm[i]=p[i&255];
+  const fade = t => t*t*t*(t*(t*6-15)+10);
+  const grad = (h,x,y) => { const u = h&1?-x:x; const v = h&2?-y:y; return u+v; };
+  return (x,y) => {
+    const X = Math.floor(x)&255, Y=Math.floor(y)&255;
+    x-=Math.floor(x); y-=Math.floor(y);
+    const u=fade(x), v=fade(y);
+    const a=perm[X]+Y, b=perm[X+1]+Y;
+    return lerp(
+      lerp(grad(perm[a],x,y), grad(perm[b],x-1,y), u),
+      lerp(grad(perm[a+1],x,y-1), grad(perm[b+1],x-1,y-1), u), v);
+  };
+}
+
+/* ============================ 1. グローバル状態 ============================ */
+const THREEJS = window.THREE;
+const V3 = (x,y,z)=>new THREEJS.Vector3(x,y,z);
+const _tmpV = new THREEJS.Vector3();
+const _tmpV2 = new THREEJS.Vector3();
+const _tmpV3 = new THREEJS.Vector3();
+
+const GAME = {
+  scene:null, camera:null, renderer:null, clock:null,
+  state:'title', // title, playing, paused, dead, ended
+  time:0, dayTime:0.28, // 0..1 (0=midnight, .25=dawn, .5=noon)
+  enemies:[], projectiles:[], allies:[], pickups:[], particles:[], floaters:[],
+  props:[], grasses:null, water:null,
+  stageIndex:0, killCount:0, frame:0,
+  paused:false, volume:0.6, invertY:false,
+  shake:0, slowmo:1, target:null, // lock-on
+  noise:null,
+};
+window.GAME = GAME;
+
+/* ============================ 2. ゲームデータ定義 ============================ */
+// 形態（変身チェーン）。色・スケール・基礎ステータス・攻撃挙動を持つ。
+const FORMS = {
+  mouse:  { id:'mouse',  emoji:'🐭', name:'ネズミ',   type:'隠密・逃走型', key:'1',
+            color:0x9a8a78, accent:0xb7a98a, scale:0.55, speed:9.5, jump:9, hp:60,
+            atkRange:1.6, atkArc:1.5, atkDmg:8, atkCd:0.28, atkType:'melee',
+            skill:{name:'ダッシュバイト',icon:'💨',cd:3.5,kind:'dash'},
+            canFly:false, sense:'ultrasonic', desc:'素早く小さい。狭い隙間を抜け、危険を察知する。' },
+  fox:    { id:'fox',    emoji:'🦊', name:'キツネ',   type:'俊敏・連撃型', key:'2',
+            color:0xc4632a, accent:0xe88a44, scale:0.85, speed:11, jump:11, hp:120,
+            atkRange:2.2, atkArc:1.3, atkDmg:16, atkCd:0.22, atkType:'melee',
+            skill:{name:'三連牙',icon:'🌀',cd:5,kind:'spin'},
+            canFly:false, sense:'smell', desc:'バランス型。連続攻撃と機動力に優れる。' },
+  snake:  { id:'snake',  emoji:'🐍', name:'ニシキヘビ', type:'待機・遠隔型', key:'3',
+            color:0x4a7a3a, accent:0x8ac46a, scale:0.7, speed:8, jump:7, hp:150,
+            atkRange:2.0, atkArc:1.0, atkDmg:14, atkCd:0.3, atkType:'melee',
+            skill:{name:'毒弾',icon:'🟢',cd:1.4,kind:'venom'},
+            canFly:false, sense:'thermal', desc:'熱源を視る。狙った方向へ毒弾を連射する。' },
+  eagle:  { id:'eagle',  emoji:'🦅', name:'イヌワシ',  type:'空中制圧型', key:'4',
+            color:0x6a5238, accent:0xc8a050, scale:1.0, speed:13, jump:13, hp:170,
+            atkRange:2.6, atkArc:1.2, atkDmg:24, atkCd:0.32, atkType:'melee',
+            skill:{name:'急降下強襲',icon:'⬇️',cd:4.5,kind:'dive'},
+            canFly:true, sense:'aerial', desc:'空を制す。上昇下降し、急降下で即死級の一撃。' },
+  wolf:   { id:'wolf',   emoji:'🐺', name:'オオカミ',  type:'群れ指揮型', key:'5',
+            color:0x6a6a72, accent:0xb0b0c0, scale:1.05, speed:11.5, jump:11, hp:230,
+            atkRange:2.6, atkArc:1.4, atkDmg:28, atkCd:0.26, atkType:'melee',
+            skill:{name:'咆哮の衝撃波',icon:'🌊',cd:6,kind:'howl'},
+            canFly:false, sense:'pack', desc:'群れの長。咆哮で周囲を薙ぎ払い、仲間を鼓舞。' },
+  human:  { id:'human',  emoji:'🧍', name:'原始人',    type:'文明制圧型', key:'6',
+            color:0xb89070, accent:0xe0c0a0, scale:1.1, speed:11, jump:12, hp:280,
+            atkRange:3.0, atkArc:1.3, atkDmg:34, atkCd:0.3, atkType:'melee',
+            skill:{name:'投擲の槍',icon:'🗡️',cd:1.2,kind:'spear'},
+            canFly:false, sense:'tool', desc:'人間の力。槍を投げ、文明そのものと対峙する。' },
+};
+const FORM_ORDER = ['mouse','fox','snake','eagle','wolf','human'];
+
+// ステージ定義（環境テーマ・ボス・解放形態・色調）
+const STAGES = [
+  { id:0, name:'草原の夜明け',   sub:'STAGE 01 — PRAIRIE DAWN',  ground:0x3a5a3a, fog:0x9cb0a0, sky:0xa8c0d0,
+    boss:'fox', unlock:'fox', mechanic:'スニーク＆エスケープ', spawnLv:1, packs:2, dayStart:0.22,
+    intro:'あなたはネズミ。生態系の底辺。草むらに隠れ、本能を満たし、初めての天敵キツネを倒せ。' },
+  { id:1, name:'湿地のヘビ王国', sub:'STAGE 02 — SERPENT MARSH', ground:0x2a4a3a, fog:0x6a8a7a, sky:0x7a9a8a,
+    boss:'snake', unlock:'snake', mechanic:'形態切り替え戦略', spawnLv:5, packs:3, dayStart:0.55,
+    intro:'キツネとなり湿地へ。熱を放つヘビたちの巣。形態を切り替え、ヘビ王を討て。' },
+  { id:2, name:'断崖のワシの縄張り', sub:'STAGE 03 — CLIFF OF EAGLES', ground:0x5a4a3a, fog:0xb0a890, sky:0x90b0d0,
+    boss:'eagle', unlock:'eagle', mechanic:'3次元空間制圧', spawnLv:10, packs:3, dayStart:0.45,
+    intro:'断崖の上、空を支配するイヌワシ。急降下の死角を突き、空を「使える場所」にせよ。' },
+  { id:3, name:'森のオオカミ群れ', sub:'STAGE 04 — WOLF FOREST', ground:0x2a3a2a, fog:0x4a5a4a, sky:0x3a4a5a,
+    boss:'wolf', unlock:'wolf', mechanic:'群れ指揮＆マルチ作戦', spawnLv:16, packs:4, dayStart:0.05,
+    intro:'夜の森。群れで連携するオオカミ。空から偵察し、陽動し、群れの長を討て。' },
+  { id:4, name:'人間の村', sub:'STAGE 05 — TURNING POINT', ground:0x4a4438, fog:0x8a8478, sky:0xb0a890,
+    boss:'human', unlock:'human', mechanic:'選択と道徳のジレンマ', spawnLv:24, packs:4, dayStart:0.7,
+    intro:'初めての人間。罠・銃・農薬。強さだけでは勝てない。仲間が捕らわれ始める…。' },
+  { id:5, name:'文明の心臓部', sub:'STAGE 06 — HEART OF CIVILIZATION', ground:0x33363c, fog:0x55585f, sky:0x222630,
+    boss:'system', unlock:null, mechanic:'全形態の統合運用', spawnLv:34, packs:5, dayStart:0.0,
+    intro:'都市の最奥。真のボスは「生態系を破壊するシステム」。全ての形態を統合し、対峙せよ。' },
 ];
 
-/* ---------- STATE ---------- */
-const S={
-  stageIdx:0,form:'mouse',instinct:100,vitality:100,
-  player:null,vy:0,grounded:true,
-  yaw:0,pitch:-0.22,camDist:9,
-  boss:null,bossMesh:null,enemies:[],hideSpots:[],allies:[],projectiles:[],fx:[],
-  particles:null,senseMode:false,attackCD:0,skillCD:0,hurtCD:0,dashCD:0,dashT:0,
-  bossSpawned:false,stageClear:false,choiceMade:null,transforming:0,
-  shards:0,combo:0,comboTimer:0,lockOn:null,shake:0,sun:null,territory:null,
+// スキルツリー（形態ごとに段階的に強化）。passive=ステータス, active=新能力強化
+const SKILL_TREE = [
+  { tier:'生存 — SURVIVAL', nodes:[
+    { id:'vit1', icon:'❤️', name:'頑強な肉体', desc:'最大HP +20%', cost:1, max:3, apply:p=>p.bonus.hpMul+=0.20 },
+    { id:'stam1', icon:'💨', name:'持久力', desc:'最大スタミナ +25%・回復速度+', cost:1, max:3, apply:p=>{p.bonus.stMul+=0.25;p.bonus.stRegen+=0.4;} },
+    { id:'regen', icon:'🌿', name:'自己治癒', desc:'戦闘外でHP自然回復', cost:2, max:2, apply:p=>p.bonus.regen+=2.5 },
+    { id:'instinct', icon:'⚡', name:'鋭敏な本能', desc:'本能回復+40%・スキルCD-10%', cost:1, max:3, apply:p=>{p.bonus.inRegen+=0.4;p.bonus.cdMul*=0.9;} },
+  ]},
+  { tier:'攻撃 — OFFENSE', nodes:[
+    { id:'pow1', icon:'⚔️', name:'鋭い牙', desc:'攻撃力 +18%', cost:1, max:4, apply:p=>p.bonus.dmgMul+=0.18 },
+    { id:'crit', icon:'💢', name:'急所狙い', desc:'クリティカル率 +12%', cost:1, max:3, apply:p=>p.bonus.crit+=0.12 },
+    { id:'critdmg', icon:'🔥', name:'致命の一撃', desc:'クリティカル倍率 +40%', cost:2, max:3, apply:p=>p.bonus.critDmg+=0.4 },
+    { id:'lifesteal', icon:'🩸', name:'吸血', desc:'与ダメの8%だけHP回復', cost:2, max:2, apply:p=>p.bonus.lifesteal+=0.08 },
+    { id:'combo', icon:'🌀', name:'連撃の達人', desc:'コンボでダメージ増加が上昇', cost:2, max:2, apply:p=>p.bonus.comboMul+=0.5 },
+  ]},
+  { tier:'機動 — MOBILITY', nodes:[
+    { id:'spd1', icon:'🏃', name:'俊足', desc:'移動速度 +12%', cost:1, max:3, apply:p=>p.bonus.spdMul+=0.12 },
+    { id:'dash2', icon:'✨', name:'二段ダッシュ', desc:'ダッシュ回数+1・無敵フレーム延長', cost:2, max:1, apply:p=>{p.bonus.dashCharges+=1;p.bonus.iframe+=0.12;} },
+    { id:'djump', icon:'🦅', name:'二段ジャンプ', desc:'空中でもう一度跳べる', cost:2, max:1, apply:p=>p.bonus.doubleJump=true },
+    { id:'airctrl', icon:'🌬️', name:'空中制御', desc:'滞空・空中機動が向上', cost:1, max:2, apply:p=>p.bonus.airCtrl+=0.4 },
+  ]},
+  { tier:'絆 — BOND', nodes:[
+    { id:'ally1', icon:'🐾', name:'仲間の絆', desc:'仲間の攻撃力+30%・最大数+1', cost:2, max:3, apply:p=>{p.bonus.allyDmg+=0.3;p.bonus.maxAllies+=1;} },
+    { id:'gold1', icon:'🪙', name:'狩人の眼', desc:'ドロップ・所持金獲得+30%', cost:1, max:3, apply:p=>p.bonus.gold+=0.3 },
+    { id:'xp1', icon:'📈', name:'適応進化', desc:'獲得経験値 +25%', cost:1, max:3, apply:p=>p.bonus.xp+=0.25 },
+  ]},
+];
+
+// 装備（遺物）— 倒した敵がドロップ。装備でステータスup
+const RELICS = [
+  { id:'fang', icon:'🦷', name:'天敵の牙', stat:'攻撃力', desc:'攻撃力 +12%', apply:p=>p.bonus.dmgMul+=0.12 },
+  { id:'hide', icon:'🛡️', name:'厚い毛皮', stat:'防御', desc:'被ダメージ -12%', apply:p=>p.bonus.defMul+=0.12 },
+  { id:'heart', icon:'💗', name:'野生の心臓', stat:'HP', desc:'最大HP +15%', apply:p=>p.bonus.hpMul+=0.15 },
+  { id:'wing', icon:'🪶', name:'風切り羽', stat:'速度', desc:'移動速度 +10%', apply:p=>p.bonus.spdMul+=0.10 },
+  { id:'eye', icon:'👁️', name:'捕食者の眼', stat:'会心', desc:'会心率 +10%・会心倍率+20%', apply:p=>{p.bonus.crit+=0.10;p.bonus.critDmg+=0.2;} },
+  { id:'venomgland', icon:'☠️', name:'毒腺', stat:'継続', desc:'攻撃に毒付与（継続ダメージ）', apply:p=>p.bonus.poison=true },
+  { id:'core', icon:'⚙️', name:'文明のコア', stat:'本能', desc:'本能回復+50%・スキルCD-15%', apply:p=>{p.bonus.inRegen+=0.5;p.bonus.cdMul*=0.85;} },
+];
+
+// 消費アイテム
+const CONSUMABLES = {
+  berry:  { icon:'🫐', name:'回復ベリー', desc:'HPを40%回復', use:p=>p.heal(p.maxHp*0.4) },
+  meat:   { icon:'🍖', name:'新鮮な肉', desc:'HP全回復・攻撃力一時上昇', use:p=>{p.heal(p.maxHp);p.buff('atk',1.3,15);} },
+  herb:   { icon:'🌱', name:'薬草', desc:'スタミナと本能を全回復', use:p=>{p.stamina=p.maxStamina;p.instinct=p.maxInstinct;} },
+  feather:{ icon:'🪶', name:'加護の羽', desc:'30秒間スピード上昇', use:p=>p.buff('spd',1.4,30) },
 };
-const keys={};
-const input={fwd:0,strafe:0,attack:false,skill:false,instinct:false,jump:false,dash:false};
 
-/* ---------- INIT ---------- */
-function init(){
-  scene=new THREE.Scene();
-  camera=new THREE.PerspectiveCamera(62,W()/H(),0.1,600);
-  renderer=new THREE.WebGLRenderer({antialias:true});
-  renderer.setSize(W(),H());
-  renderer.setPixelRatio(Math.min(devicePixelRatio,2));
-  renderer.shadowMap.enabled=true;
-  renderer.shadowMap.type=THREE.PCFSoftShadowMap;
-  document.getElementById('game').appendChild(renderer.domElement);
-  clock=new THREE.Clock();
-  addEventListener('resize',onResize);
-  buildWheel();
-  bindControls();
-  detectMobile();
-}
-function onResize(){camera.aspect=W()/H();camera.updateProjectionMatrix();renderer.setSize(W(),H());detectMobile();}
-
-/* ---------- MOBILE ---------- */
-let isMobile=false;
-function detectMobile(){
-  isMobile=/Mobi|Android|iPhone|iPad/i.test(navigator.userAgent)||('ontouchstart'in window&&innerWidth<1024);
-  document.getElementById('mobile').style.display=isMobile?'block':'none';
-  document.getElementById('rotateNote').style.display=(isMobile&&innerHeight>innerWidth)?'flex':'none';
-}
-
-/* ---------- WORLD ---------- */
-function clearWorld(){
-  while(scene.children.length)scene.remove(scene.children[0]);
-  S.enemies=[];S.hideSpots=[];S.allies=[];S.bossMesh=null;S.boss=null;
-  S.projectiles=[];S.fx=[];S.lockOn=null;
-}
-function buildStage(){
-  clearWorld();
-  const st=STAGES[S.stageIdx];
-  scene.fog=new THREE.Fog(st.fog,34,180);
-  scene.background=new THREE.Color(st.sky);
-
-  const hemi=new THREE.HemisphereLight(0xbfd4e6,st.ground,0.6);scene.add(hemi);
-  const sun=new THREE.DirectionalLight(0xffe9c2,1.0);
-  sun.position.set(40,80,30);sun.castShadow=true;
-  sun.shadow.mapSize.set(1024,1024);sun.shadow.camera.far=240;
-  sun.shadow.camera.left=-100;sun.shadow.camera.right=100;sun.shadow.camera.top=100;sun.shadow.camera.bottom=-100;
-  scene.add(sun);S.sun=sun;
-  scene.add(new THREE.AmbientLight(0x33404a,0.45));
-
-  const gMat=new THREE.MeshStandardMaterial({color:st.ground,roughness:.96});
-  const ground=new THREE.Mesh(new THREE.CircleGeometry(130,64),gMat);
-  ground.rotation.x=-Math.PI/2;ground.receiveShadow=true;scene.add(ground);
-
-  S.territory=new THREE.Group();scene.add(S.territory);
-
-  const sceneryColor=[0x3a3a3a,0x2a3a2a,0x55504a,0x223018,0x504434,0x3a3a44][S.stageIdx];
-  for(let i=0;i<74;i++){
-    const r=10+Math.random()*104,a=Math.random()*Math.PI*2;
-    const h=1+Math.random()*(S.stageIdx===2?9:4);
-    const geo=(S.stageIdx===2||S.stageIdx===5)?new THREE.ConeGeometry(0.6+Math.random(),h,5)
-             :new THREE.DodecahedronGeometry(0.6+Math.random()*1.4);
-    const m=new THREE.Mesh(geo,new THREE.MeshStandardMaterial({color:sceneryColor,roughness:1,flatShading:true}));
-    m.position.set(Math.cos(a)*r,h/2*0.6,Math.sin(a)*r);
-    m.castShadow=true;m.receiveShadow=true;scene.add(m);
+/* ============================ 3. サウンド（WebAudio 合成） ============================ */
+const Sound = (() => {
+  let ctx = null, master = null;
+  function ensure(){
+    if (ctx) return;
+    try{
+      ctx = new (window.AudioContext||window.webkitAudioContext)();
+      master = ctx.createGain(); master.gain.value = GAME.volume; master.connect(ctx.destination);
+    }catch(e){ ctx=null; }
   }
-  for(let i=0;i<18;i++){
-    const r=6+Math.random()*74,a=Math.random()*Math.PI*2;
-    const g=new THREE.Group();
-    for(let b=0;b<6;b++){
-      const blade=new THREE.Mesh(new THREE.ConeGeometry(0.12,1.4,4),
-        new THREE.MeshStandardMaterial({color:0x4a7a3a,roughness:1}));
-      blade.position.set((Math.random()-.5)*1.2,0.7,(Math.random()-.5)*1.2);
-      blade.rotation.z=(Math.random()-.5)*.4;g.add(blade);
-    }
-    g.position.set(Math.cos(a)*r,0,Math.sin(a)*r);g.userData.hide=true;
-    scene.add(g);S.hideSpots.push(g);
+  function setVol(v){ GAME.volume=v; if(master) master.gain.value=v; }
+  function tone(freq, dur, type='sine', vol=0.2, slideTo=null){
+    if(!ctx) return;
+    const o = ctx.createOscillator(), g = ctx.createGain();
+    o.type=type; o.frequency.value=freq;
+    if(slideTo) o.frequency.exponentialRampToValueAtTime(Math.max(1,slideTo), ctx.currentTime+dur);
+    g.gain.setValueAtTime(vol, ctx.currentTime);
+    g.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime+dur);
+    o.connect(g); g.connect(master); o.start(); o.stop(ctx.currentTime+dur);
   }
-
-  S.player=buildCreature(FORMS[S.form]);scene.add(S.player);
-  S.player.position.set(0,FORMS[S.form].size,0);
-  spawnAmbient();
-  buildParticles();
-  S.bossSpawned=false;S.stageClear=false;S.choiceMade=null;
-  document.getElementById('bossWrap').style.opacity=0;
-  applySenseColor();
-}
-
-function buildCreature(form,scaleMul=1){
-  const g=new THREE.Group();
-  const s=form.size*scaleMul;
-  const mat=new THREE.MeshStandardMaterial({color:form.color,roughness:.75,flatShading:true});
-  g.userData.mat=mat;
-  let body;
-  if(form.key==='snake'){
-    body=new THREE.Mesh(new THREE.CapsuleGeometry(s*0.35,s*2.2,4,8),mat);body.rotation.z=Math.PI/2;
-  } else if(form.key==='system'){
-    body=new THREE.Mesh(new THREE.IcosahedronGeometry(s*0.8,1),mat);
-  } else {
-    body=new THREE.Mesh(new THREE.SphereGeometry(s*0.6,12,9),mat);body.scale.set(1.45,0.9,1);
+  function noise(dur, vol=0.18, filt=1200){
+    if(!ctx) return;
+    const n = ctx.createBufferSource();
+    const buf = ctx.createBuffer(1, ctx.sampleRate*dur, ctx.sampleRate);
+    const d = buf.getChannelData(0);
+    for(let i=0;i<d.length;i++) d[i]=(Math.random()*2-1)*Math.pow(1-i/d.length,2);
+    n.buffer=buf;
+    const f = ctx.createBiquadFilter(); f.type='lowpass'; f.frequency.value=filt;
+    const g = ctx.createGain(); g.gain.value=vol;
+    n.connect(f); f.connect(g); g.connect(master); n.start();
   }
-  body.castShadow=true;g.add(body);g.userData.body=body;
-  const head=new THREE.Mesh(new THREE.SphereGeometry(s*0.38,9,8),mat);
-  head.position.set(s*0.9,s*0.25,0);head.castShadow=true;g.add(head);
-  const eyeMat=new THREE.MeshBasicMaterial({color:0xf0d98a});
-  const e1=new THREE.Mesh(new THREE.SphereGeometry(s*0.1,6,6),eyeMat),e2=e1.clone();
-  e1.position.set(s*1.15,s*0.4,s*0.18);e2.position.set(s*1.15,s*0.4,-s*0.18);
-  g.add(e1);g.add(e2);g.userData.eyeMat=eyeMat;
-  if(form.key==='mouse'||form.key==='fox'||form.key==='wolf'){
-    const earGeo=new THREE.ConeGeometry(s*0.18,s*0.4,4);
-    const ear1=new THREE.Mesh(earGeo,mat),ear2=new THREE.Mesh(earGeo,mat);
-    ear1.position.set(s*0.95,s*0.7,s*0.2);ear2.position.set(s*0.95,s*0.7,-s*0.2);g.add(ear1);g.add(ear2);
-  }
-  if(form.key==='eagle'){
-    const wGeo=new THREE.BoxGeometry(s*0.2,s*0.1,s*2.4);
-    const w1=new THREE.Mesh(wGeo,mat),w2=new THREE.Mesh(wGeo,mat);
-    w1.position.set(0,s*0.3,s*1.2);w2.position.set(0,s*0.3,-s*1.2);g.add(w1);g.add(w2);g.userData.wings=[w1,w2];
-  }
-  if(form.key!=='snake'&&form.key!=='eagle'&&form.key!=='system'){
-    for(let i=0;i<4;i++){
-      const leg=new THREE.Mesh(new THREE.CylinderGeometry(s*0.08,s*0.08,s*0.6,5),mat);
-      leg.position.set((i<2?0.5:-0.4)*s,-s*0.4,(i%2?0.3:-0.3)*s);leg.userData.leg=i;g.add(leg);
-    }
-  }
-  if(form.key!=='system'){
-    const tail=new THREE.Mesh(new THREE.ConeGeometry(s*0.12,s*1.1,5),mat);
-    tail.position.set(-s*0.9,s*0.1,0);tail.rotation.z=Math.PI/2.3;g.add(tail);
-  }
-  g.userData.form=form.key;g.userData.size=s;
-  return g;
-}
-
-function spawnAmbient(){
-  const types=[FORMS.mouse,FORMS.fox];
-  for(let i=0;i<8;i++){
-    const f=types[Math.floor(Math.random()*types.length)];
-    const c=buildCreature(f,0.8);
-    const r=22+Math.random()*64,a=Math.random()*Math.PI*2;
-    c.position.set(Math.cos(a)*r,f.size*0.8,Math.sin(a)*r);
-    c.userData.ambient=true;c.userData.dir=Math.random()*Math.PI*2;c.userData.spd=2+Math.random()*3;
-    c.userData.form=f.key;c.userData.hp=14;
-    scene.add(c);S.enemies.push(c);
-  }
-}
-
-function buildParticles(){
-  const N=1100;const geo=new THREE.BufferGeometry();
-  const pos=new Float32Array(N*3);
-  for(let i=0;i<N;i++){pos[i*3]=(Math.random()-.5)*220;pos[i*3+1]=Math.random()*42;pos[i*3+2]=(Math.random()-.5)*220;}
-  geo.setAttribute('position',new THREE.BufferAttribute(pos,3));
-  const mat=new THREE.PointsMaterial({color:0xbfd6c0,size:0.18,transparent:true,opacity:0.45});
-  S.particles=new THREE.Points(geo,mat);scene.add(S.particles);
-}
-
-/* ---------- SENSE ---------- */
-function applySenseColor(){
-  const f=FORMS[S.form];
-  if(S.senseMode){
-    scene.background=new THREE.Color(f.tint);
-    if(scene.fog)scene.fog.color=new THREE.Color(f.tint);
-    const t=document.getElementById('senseTag');t.style.opacity=1;t.textContent='SENSE MODE — '+f.sense;
-  } else {
-    const st=STAGES[S.stageIdx];
-    scene.background=new THREE.Color(st.sky);
-    if(scene.fog)scene.fog.color=new THREE.Color(st.fog);
-    document.getElementById('senseTag').style.opacity=0;
-  }
-}
-
-/* ---------- TRANSFORM ---------- */
-function transform(target){
-  if(target===S.form){S.senseMode=!S.senseMode;applySenseColor();return;}
-  const f=FORMS[target];
-  if(!f||!f.unlocked){flashBanner('🔒 まだ解放されていない形態',f?('「'+f.name+'」のボスを倒せ'):'');return;}
-  if(S.instinct<f.instinctCost&&target!=='mouse'){flashBanner('本能が足りない','その形態らしい行動でゲージを回復せよ');return;}
-  if(target!=='mouse')S.instinct=Math.max(0,S.instinct-f.instinctCost);
-  S.form=target;
-  const pos=S.player.position.clone();const rot=S.player.rotation.y;
-  scene.remove(S.player);
-  S.player=buildCreature(f);S.player.position.copy(pos);S.player.rotation.y=rot;scene.add(S.player);
-  S.transforming=0.5;S.senseMode=false;applySenseColor();
-  spawnHit(pos,0xe7c878,true,2);
-  updateHUD();
-}
-
-/* ---------- BOSS ---------- */
-function spawnBoss(){
-  const st=STAGES[S.stageIdx];const b=st.boss;
-  S.boss={...b,maxhp:b.hp,hp:b.hp,cd:1.0,t:0};
-  const form={key:b.form,emoji:b.emoji,name:b.name,color:b.color,size:b.size};
-  S.bossMesh=buildCreature(form);
-  S.bossMesh.position.set(0,b.style==='dive'?10:b.size,-28);
-  S.bossMesh.userData.boss=true;
-  scene.add(S.bossMesh);
-  S.bossSpawned=true;
-  document.getElementById('bossWrap').style.opacity=1;
-  document.getElementById('bossName').textContent=b.emoji+' '+b.name;
-  document.getElementById('bossFill').style.width='100%';
-  flashBanner(b.emoji+' '+b.name+' 出現',b.tip);
-  setObjective(b.tip);
-  S.lockOn=S.bossMesh;
-}
-
-/* ---------- HUD ---------- */
-function buildWheel(){
-  const w=document.getElementById('formWheel');w.innerHTML='';
-  ORDER.forEach((k,i)=>{
-    const f=FORMS[k];const d=document.createElement('div');
-    d.className='formChip'+(f.unlocked?' unlocked':' locked')+(k===S.form?' active':'');
-    d.innerHTML=f.emoji+'<span class="key">'+(i+1)+'</span>';
-    d.dataset.form=k;d.onclick=()=>transform(k);w.appendChild(d);
-  });
-}
-function refreshWheel(){
-  [...document.querySelectorAll('.formChip')].forEach(d=>{
-    const f=FORMS[d.dataset.form];
-    d.className='formChip'+(f.unlocked?' unlocked':' locked')+(d.dataset.form===S.form?' active':'');
-  });
-}
-function updateHUD(){
-  const f=FORMS[S.form];
-  document.getElementById('formEmoji').textContent=f.emoji;
-  document.getElementById('formName').textContent=f.name;
-  document.getElementById('formType').textContent=f.type;
-  document.getElementById('instinctFill').style.width=S.instinct+'%';
-  document.getElementById('healthFill').style.width=S.vitality+'%';
-  refreshWheel();
-}
-function setObjective(t){document.getElementById('objective').textContent=t;}
-let bannerTO;
-function flashBanner(main,sub,dur=2600){
-  const b=document.getElementById('banner'),s=document.getElementById('subBanner');
-  b.textContent=main;s.textContent=sub||'';b.style.opacity=1;s.style.opacity=sub?1:0;
-  clearTimeout(bannerTO);bannerTO=setTimeout(()=>{b.style.opacity=0;s.style.opacity=0;},dur);
-}
-function showCombo(){
-  const c=document.getElementById('comboTag');
-  if(S.combo>=2){c.textContent=S.combo+' COMBO';c.style.opacity=1;}
-  else c.style.opacity=0;
-}
-
-/* ---------- CONTROLS ---------- */
-function bindControls(){
-  addEventListener('keydown',e=>{
-    const k=e.key.toLowerCase();keys[k]=true;
-    if(KEYMAP[e.key])transform(KEYMAP[e.key]);
-    if(k==='e')input.instinct=true;
-    if(k==='q')toggleLock();
-    if(k==='j'){input.attack=true;}
-    if(k==='k'){input.skill=true;}
-    if(k===' ')e.preventDefault();
-  });
-  addEventListener('keyup',e=>{
-    const k=e.key.toLowerCase();keys[k]=false;
-    if(k==='e')input.instinct=false;
-    if(k==='j')input.attack=false;
-    if(k==='k')input.skill=false;
-  });
-
-  // mouse look + pointer lock
-  renderer.domElement.addEventListener('click',()=>{if(!isMobile&&running&&document.pointerLockElement!==renderer.domElement)renderer.domElement.requestPointerLock();});
-  addEventListener('mousemove',e=>{
-    if(document.pointerLockElement===renderer.domElement){
-      S.yaw-=e.movementX*0.0024;S.pitch-=e.movementY*0.0021;
-      S.pitch=Math.max(-1.25,Math.min(0.5,S.pitch));
-    }
-  });
-  addEventListener('mousedown',e=>{if(!running)return;if(e.button===0)input.attack=true;if(e.button===2)input.skill=true;});
-  addEventListener('mouseup',e=>{if(e.button===0)input.attack=false;if(e.button===2)input.skill=false;});
-  addEventListener('contextmenu',e=>e.preventDefault());
-
-  // joystick (move)
-  const joy=document.getElementById('joy'),knob=document.getElementById('joyKnob');
-  let joyId=null,jcx=0,jcy=0;
-  const jstart=t=>{const r=joy.getBoundingClientRect();jcx=r.left+r.width/2;jcy=r.top+r.height/2;joyId=t.identifier;};
-  const jmove=t=>{let dx=t.clientX-jcx,dy=t.clientY-jcy;const m=Math.hypot(dx,dy),mx=58;if(m>mx){dx*=mx/m;dy*=mx/m;}
-    knob.style.transform=`translate(${dx}px,${dy}px)`;input.strafe=dx/mx;input.fwd=-dy/mx;};
-  const jend=()=>{joyId=null;knob.style.transform='';input.fwd=0;input.strafe=0;};
-  joy.addEventListener('touchstart',e=>{e.preventDefault();jstart(e.changedTouches[0]);jmove(e.changedTouches[0]);},{passive:false});
-  joy.addEventListener('touchmove',e=>{e.preventDefault();for(const t of e.changedTouches)if(t.identifier===joyId)jmove(t);},{passive:false});
-  joy.addEventListener('touchend',e=>{for(const t of e.changedTouches)if(t.identifier===joyId)jend();},{passive:false});
-
-  // aim pad (right) — drag to look/aim
-  const aim=document.getElementById('aimPad');
-  let aimId=null,lx=0,ly=0;
-  aim.addEventListener('touchstart',e=>{e.preventDefault();const t=e.changedTouches[0];aimId=t.identifier;lx=t.clientX;ly=t.clientY;},{passive:false});
-  aim.addEventListener('touchmove',e=>{e.preventDefault();for(const t of e.changedTouches)if(t.identifier===aimId){
-    S.yaw-=(t.clientX-lx)*0.005;S.pitch-=(t.clientY-ly)*0.004;
-    S.pitch=Math.max(-1.25,Math.min(0.5,S.pitch));lx=t.clientX;ly=t.clientY;}},{passive:false});
-  aim.addEventListener('touchend',e=>{for(const t of e.changedTouches)if(t.identifier===aimId)aimId=null;},{passive:false});
-
-  const bind=(id,prop)=>{const el=document.getElementById(id);
-    el.addEventListener('touchstart',e=>{e.preventDefault();e.stopPropagation();input[prop]=true;},{passive:false});
-    el.addEventListener('touchend',e=>{e.preventDefault();e.stopPropagation();input[prop]=false;},{passive:false});};
-  bind('btnA','attack');bind('btnB','skill');bind('btnY','instinct');bind('btnJump','jump');
-  document.getElementById('btnLock').addEventListener('touchstart',e=>{e.preventDefault();e.stopPropagation();toggleLock();},{passive:false});
-}
-
-function toggleLock(){
-  if(S.lockOn){S.lockOn=null;return;}
-  // lock nearest valid target in front
-  let best=null,bd=1e9;
-  const cand=[];
-  if(S.bossMesh)cand.push(S.bossMesh);
-  for(const e of S.enemies)if(e.userData.ambient)cand.push(e);
-  for(const c of cand){
-    const d=c.position.distanceTo(S.player.position);
-    if(d<bd){bd=d;best=c;}
-  }
-  S.lockOn=best;
-}
-
-/* ---------- LOOP UPDATE ---------- */
-function update(dt){
-  const f=FORMS[S.form];
-  if(S.transforming>0)S.transforming-=dt;
-  const slow=S.transforming>0?0.4:1;dt*=slow;
-
-  // ---- MOVEMENT (fixed & consistent) ----
-  let fwd=0,str=0;
-  if(keys['w']||keys['arrowup'])fwd+=1;
-  if(keys['s']||keys['arrowdown'])fwd-=1;
-  if(keys['a']||keys['arrowleft'])str-=1;
-  if(keys['d']||keys['arrowright'])str+=1;
-  fwd+=input.fwd;str+=input.strafe;
-  const len=Math.hypot(fwd,str);if(len>1){fwd/=len;str/=len;}
-
-  // camera-relative movement: forward = where camera looks (yaw)
-  const sinY=Math.sin(S.yaw),cosY=Math.cos(S.yaw);
-  // forward direction on ground plane
-  const fX=-sinY, fZ=-cosY;     // unit vector camera-forward
-  const rX= cosY, rZ=-sinY;     // unit vector camera-right
-  let moveX=fX*fwd+rX*str;
-  let moveZ=fZ*fwd+rZ*str;
-
-  // dash
-  if(S.dashCD>0)S.dashCD-=dt;
-  if((keys['shift']||input.dash)&&S.dashCD<=0&&len>0.1&&S.instinct>=10){
-    S.dashT=0.18;S.dashCD=0.7;S.instinct=Math.max(0,S.instinct-10);
-    spawnHit(S.player.position,0xbfe0ff,false,1);
-  }
-  if(S.dashT>0)S.dashT-=dt;
-  const dashMul=S.dashT>0?2.6:1;
-
-  const p=S.player.position;
-  const spd=f.speed*(S.senseMode?0.82:1)*dashMul;
-  p.x+=moveX*spd*dt;p.z+=moveZ*spd*dt;
-  const dist=Math.hypot(p.x,p.z);if(dist>122){p.x*=122/dist;p.z*=122/dist;}
-
-  // jump / fly
-  if(f.fly){
-    let climb=0;if(keys[' ']||input.jump)climb+=1;if(keys['control']||keys['c'])climb-=1;
-    S.vy+=(climb*16-2.5)*dt;S.vy=Math.max(-14,Math.min(14,S.vy));
-    p.y+=S.vy*dt;p.y=Math.max(1.2,Math.min(48,p.y));
-  } else {
-    if((keys[' ']||input.jump)&&S.grounded){S.vy=f.jump;S.grounded=false;}
-    S.vy-=26*dt;p.y+=S.vy*dt;
-    const floor=f.size;if(p.y<=floor){p.y=floor;S.vy=0;S.grounded=true;}
-  }
-
-  // ---- FACING ----
-  // If locked on, face target; else face aim (yaw) when attacking, else move dir
-  let faceTarget;
-  if(S.lockOn&&S.lockOn.parent){
-    faceTarget=Math.atan2(S.lockOn.position.x-p.x,-(S.lockOn.position.z-p.z));
-  } else if(len>0.05){
-    faceTarget=Math.atan2(moveX,-moveZ);
-  } else {
-    faceTarget=Math.atan2(fX,-fZ); // face camera-forward when idle
-  }
-  S.player.rotation.y+=angleLerp(S.player.rotation.y,faceTarget)*Math.min(1,dt*14);
-
-  animateCreature(S.player,len>0.05||S.dashT>0);
-  recoverInstinct(dt,len,f);
-  updateCamera(dt);
-  updateAmbient(dt);
-  updateProjectiles(dt);
-
-  if(S.bossSpawned&&!S.stageClear)updateBoss(dt);
-  else if(!S.bossSpawned&&!S.stageClear)checkBossTrigger();
-
-  // combat cds
-  if(S.attackCD>0)S.attackCD-=dt;if(S.skillCD>0)S.skillCD-=dt;if(S.hurtCD>0)S.hurtCD-=dt;
-  if(input.attack&&S.attackCD<=0)doAttack(false);
-  if(input.skill&&S.skillCD<=0)doAttack(true);
-
-  // combo timer
-  if(S.comboTimer>0){S.comboTimer-=dt;if(S.comboTimer<=0){S.combo=0;showCombo();}}
-
-  if(S.particles){S.particles.rotation.y+=dt*0.02;S.particles.position.y=Math.sin(clock.elapsedTime*0.3)*0.5;}
-  setEyeColor(S.player,S.instinct);
-  updateTerritory(dt);
-  if(S.sun){const t=clock.elapsedTime*0.04;S.sun.position.set(Math.cos(t)*70,46+Math.sin(t)*30,Math.sin(t)*46);
-    S.sun.intensity=0.55+Math.max(0,Math.sin(t))*0.6;}
-
-  updateReticle();
-}
-
-function angleLerp(a,b){let d=b-a;while(d>Math.PI)d-=2*Math.PI;while(d<-Math.PI)d+=2*Math.PI;return d;}
-
-function animateCreature(g,moving){
-  const t=clock.elapsedTime;
-  g.children.forEach(c=>{
-    if(c.userData.leg!==undefined&&moving)c.rotation.x=Math.sin(t*12+c.userData.leg)*0.7;
-    else if(c.userData.leg!==undefined)c.rotation.x*=0.8;
-  });
-  if(g.userData.wings)g.userData.wings.forEach((w,i)=>{w.rotation.x=Math.sin(t*8)*0.55*(i?-1:1);});
-}
-
-function recoverInstinct(dt,moveLen,f){
-  let rec=false;
-  switch(S.form){
-    case 'mouse':for(const h of S.hideSpots){if(h.position.distanceTo(S.player.position)<2.6&&moveLen<0.12){rec=true;break;}}break;
-    case 'fox':if(moveLen>0.6)rec=true;break;
-    case 'snake':if(moveLen<0.06)rec=true;break;
-    case 'eagle':if(S.player.position.y>15)rec=true;break;
-    case 'wolf':if(input.instinct)rec=true;break;
-  }
-  if(rec)S.instinct=Math.min(100,S.instinct+24*dt);
-  if(S.senseMode)S.instinct=Math.max(0,S.instinct-4*dt);
-  S.instinct=Math.min(100,S.instinct+2*dt); // small global trickle
-  document.getElementById('instinctFill').style.width=S.instinct.toFixed(0)+'%';
-}
-
-function setEyeColor(g,instinct){
-  const m=g.userData.eyeMat;if(!m)return;
-  m.color.copy(new THREE.Color().lerpColors(new THREE.Color(0x556055),new THREE.Color(0xf0d98a),instinct/100));
-}
-
-function updateCamera(dt){
-  const f=FORMS[S.form];const p=S.player.position;
-  const dist=S.camDist*(f.fly?1.4:1)*(f.key==='eagle'?1.5:1);
-  const offX=Math.sin(S.yaw)*Math.cos(S.pitch)*dist;
-  const offZ=Math.cos(S.yaw)*Math.cos(S.pitch)*dist;
-  const offY=-Math.sin(S.pitch)*dist+(f.fly?6:3.2);
-  const target=new THREE.Vector3(p.x-offX,p.y+offY,p.z-offZ);
-  camera.position.lerp(target,Math.min(1,dt*9));
-  camera.lookAt(p.x,p.y+1.1,p.z);
-  const tf=(S.form==='eagle'||S.form==='wolf')?74:62;
-  camera.fov+=(tf-camera.fov)*Math.min(1,dt*4);camera.updateProjectionMatrix();
-}
-
-function updateAmbient(dt){
-  for(const e of S.enemies){
-    if(!e.userData.ambient)continue;
-    e.userData.dir+=(Math.random()-.5)*dt;
-    const toP=e.position.distanceTo(S.player.position);
-    if(toP<9){const ax=e.position.x-S.player.position.x,az=e.position.z-S.player.position.z;e.userData.dir=Math.atan2(az,ax);}
-    e.position.x+=Math.cos(e.userData.dir)*e.userData.spd*dt;
-    e.position.z+=Math.sin(e.userData.dir)*e.userData.spd*dt;
-    const d=Math.hypot(e.position.x,e.position.z);if(d>96)e.userData.dir+=Math.PI;
-    e.rotation.y=-e.userData.dir+Math.PI/2;
-    animateCreature(e,true);
-  }
-}
-
-function checkBossTrigger(){
-  if(Math.hypot(S.player.position.x,S.player.position.z)<16||clock.elapsedTime>3){if(!S.bossSpawned)spawnBoss();}
-}
-
-function updateBoss(dt){
-  const b=S.boss,m=S.bossMesh;if(!m)return;
-  b.cd-=dt;b.t+=dt;
-  const dx=S.player.position.x-m.position.x,dz=S.player.position.z-m.position.z;
-  const d=Math.hypot(dx,dz);
-  m.rotation.y=Math.atan2(dx,dz);
-
-  const style=b.style;
-  if(style==='ranged'){
-    // keep distance & shoot
-    if(d<14){m.position.x-=dx/d*b.speed*dt;m.position.z-=dz/d*b.speed*dt;}
-    else if(d>22){m.position.x+=dx/d*b.speed*0.6*dt;m.position.z+=dz/d*b.speed*0.6*dt;}
-    if(b.cd<=0){spawnBossProjectile(m.position,S.player.position,0x66ff88);b.cd=1.4;}
-    m.position.y=b.size;
-  } else if(style==='dive'){
-    // eagle: circle high, dive when timer
-    if(b.diveT>0){
-      b.diveT-=dt;
-      m.position.x+=dx/(d||1)*b.speed*1.6*dt;m.position.z+=dz/(d||1)*b.speed*1.6*dt;
-      m.position.y+=(S.player.position.y-m.position.y)*Math.min(1,dt*4);
-      if(d<3&&b.cd<=0){damagePlayer(16);b.cd=1;cameraShake(0.6);}
-    } else {
-      m.position.y+=(11+Math.sin(b.t*1.2)*3-m.position.y)*Math.min(1,dt*2);
-      const ox=Math.cos(b.t*0.8)*12,oz=Math.sin(b.t*0.8)*12;
-      m.position.x+=((S.player.position.x+ox)-m.position.x)*Math.min(1,dt*1.5);
-      m.position.z+=((S.player.position.z+oz)-m.position.z)*Math.min(1,dt*1.5);
-      if(b.cd<=0){b.diveT=1.4;b.cd=3;flashBanner('🦅 急降下！','真下に潜って回避せよ',1100);}
-    }
-  } else if(style==='orbit'){
-    const ox=Math.cos(b.t*0.6)*10,oz=Math.sin(b.t*0.6)*10;
-    m.position.x+=((S.player.position.x+ox)-m.position.x)*Math.min(1,dt*1.2);
-    m.position.z+=((S.player.position.z+oz)-m.position.z)*Math.min(1,dt*1.2);
-    m.position.y=b.size+Math.sin(b.t)*1.5;
-    m.rotation.y+=dt*1.5;
-    if(b.cd<=0){for(let i=0;i<3;i++){const ang=b.t+i*2.1;spawnBossProjectile(m.position,{x:m.position.x+Math.cos(ang)*5,y:1,z:m.position.z+Math.sin(ang)*5},0xcc66ff);}b.cd=1.6;}
-    if(d<4&&b.cd>1.4){damagePlayer(10);}
-  } else {
-    // chase / pack
-    if(d>3){m.position.x+=dx/d*b.speed*dt;m.position.z+=dz/d*b.speed*dt;}
-    m.position.y=b.size;
-    if(d<3.6&&b.cd<=0){damagePlayer(12);b.cd=1.1;cameraShake(0.45);}
-  }
-  animateCreature(m,d>3);
-  if(m.userData.body)m.userData.body.scale.setScalar(1+Math.sin(clock.elapsedTime*8)*0.02);
-}
-
-function cameraShake(a=0.4){S.shake=a;}
-
-/* ---------- AIM ---------- */
-function aimDir(){
-  // direction the camera/player is aiming on horizontal plane (and pitch for ranged)
-  if(S.lockOn&&S.lockOn.parent){
-    const v=new THREE.Vector3().subVectors(S.lockOn.position,S.player.position);
-    return v.normalize();
-  }
-  const cy=Math.cos(S.pitch);
-  return new THREE.Vector3(-Math.sin(S.yaw)*cy,Math.sin(S.pitch),-Math.cos(S.yaw)*cy).normalize();
-}
-
-function isWeaknessSatisfied(b){
-  if(b.weakness==='all')return true;
-  if(b.weakness===S.form){
-    if(b.form==='eagle'&&S.form==='mouse'){
-      return Math.abs(S.player.position.x-S.bossMesh.position.x)<5&&Math.abs(S.player.position.z-S.bossMesh.position.z)<5;
-    }
-    return true;
-  }
-  return false;
-}
-
-function doAttack(skill){
-  const f=FORMS[S.form];
-  S.attackCD=skill?Math.max(0.5,f.atkCD+0.2):f.atkCD;if(skill)S.skillCD=0.6;
-  const cost=skill?16:7;
-  if(S.instinct<cost){return;}
-  S.instinct-=cost;
-  const dir=aimDir();
-
-  if(f.ranged||skill&&(S.form==='wolf')){
-    // ranged / projectile (snake poison or wolf howl shockwave)
-    if(S.form==='wolf'&&skill){spawnShockwave();}
-    else{
-      const from=S.player.position.clone();from.y+=0.6;
-      const target=from.clone().add(dir.clone().multiplyScalar(40));
-      spawnPlayerProjectile(from,target,skill?2:1);
-    }
-    swingAnim();
-    return;
-  }
-
-  // melee — aimed cone in front (toward aimDir / lockOn)
-  swingAnim();
-  const reach=skill?f.reach+1.5:f.reach;
-  const hx=dir.x,hz=dir.z;
-  let hitSomething=false;
-
-  if(S.bossSpawned&&!S.stageClear&&S.bossMesh){
-    const bd=S.player.position.distanceTo(S.bossMesh.position);
-    const tox=S.bossMesh.position.x-S.player.position.x,toz=S.bossMesh.position.z-S.player.position.z;
-    const tl=Math.hypot(tox,toz)||1;
-    const dot=(tox/tl)*hx+(toz/tl)*hz;
-    if(bd<reach+S.boss.size&&dot>0.3){
-      hitBoss(skill);hitSomething=true;
-    }
-  }
-  S.enemies=S.enemies.filter(e=>{
-    if(e.userData.ambient){
-      const ed=e.position.distanceTo(S.player.position);
-      const tox=e.position.x-S.player.position.x,toz=e.position.z-S.player.position.z;
-      const tl=Math.hypot(tox,toz)||1;const dot=(tox/tl)*hx+(toz/tl)*hz;
-      if(ed<reach&&dot>0.2){
-        e.userData.hp-=skill?22:12;
-        spawnHit(e.position,0x88ccff,false,1);
-        if(e.userData.hp<=0){scene.remove(e);S.instinct=Math.min(100,S.instinct+6);bumpCombo();return false;}
-      }
-    }return true;
-  });
-  if(hitSomething)bumpCombo();
-}
-
-function hitBoss(skill){
-  const f=FORMS[S.form];
-  const weak=isWeaknessSatisfied(S.boss);
-  const base=(skill?f.dmg+8:f.dmg);
-  const dmg=base*(weak?3:1);
-  S.boss.hp-=dmg;
-  spawnHit(S.bossMesh.position,weak?0xffe066:0xffffff,weak,weak?2:1);
-  document.getElementById('bossFill').style.width=Math.max(0,S.boss.hp/S.boss.maxhp*100)+'%';
-  if(weak){flashBanner('弱点ヒット！','×3 ダメージ — '+S.boss.name,800);cameraShake(0.3);}
-  bumpCombo();
-  if(S.boss.hp<=0)bossDefeated();
-}
-
-function bumpCombo(){S.combo++;S.comboTimer=2.2;showCombo();}
-
-function swingAnim(){
-  // quick lunge of body
-  if(S.player.userData.body){const b=S.player.userData.body;b.position.x=0.4;setTimeout(()=>{if(b)b.position.x=0;},90);}
-}
-
-/* ---------- PROJECTILES ---------- */
-function spawnPlayerProjectile(from,to,power){
-  const dir=new THREE.Vector3().subVectors(to,from).normalize();
-  const mesh=new THREE.Mesh(new THREE.SphereGeometry(0.3*power,8,8),
-    new THREE.MeshBasicMaterial({color:0x9bff8b}));
-  mesh.position.copy(from);scene.add(mesh);
-  S.projectiles.push({mesh,dir,spd:42,life:1.6,dmg:(FORMS[S.form].dmg)*power,player:true});
-}
-function spawnBossProjectile(from,to,color){
-  const dir=new THREE.Vector3(to.x-from.x,(to.y||1)-from.y,to.z-from.z).normalize();
-  const mesh=new THREE.Mesh(new THREE.SphereGeometry(0.45,8,8),new THREE.MeshBasicMaterial({color}));
-  mesh.position.copy(from);mesh.position.y+=1;scene.add(mesh);
-  S.projectiles.push({mesh,dir,spd:24,life:2.5,dmg:12,player:false});
-}
-function spawnShockwave(){
-  const ring=new THREE.Mesh(new THREE.RingGeometry(0.5,1.2,32),
-    new THREE.MeshBasicMaterial({color:0xa0d8ff,transparent:true,opacity:0.8,side:THREE.DoubleSide}));
-  ring.rotation.x=-Math.PI/2;ring.position.copy(S.player.position);ring.position.y=0.4;
-  scene.add(ring);S.fx.push({mesh:ring,t:0,shock:true});
-  // damage all in radius growing — handle immediate radius hits over time via flag
-  S.shockActive={pos:S.player.position.clone(),t:0};
-}
-function updateProjectiles(dt){
-  S.projectiles=S.projectiles.filter(pr=>{
-    pr.mesh.position.add(pr.dir.clone().multiplyScalar(pr.spd*dt));
-    pr.life-=dt;
-    if(pr.player){
-      if(S.bossMesh&&pr.mesh.position.distanceTo(S.bossMesh.position)<S.boss.size+0.8){
-        const weak=isWeaknessSatisfied(S.boss);
-        S.boss.hp-=pr.dmg*(weak?3:1);
-        spawnHit(pr.mesh.position,weak?0xffe066:0xffffff,weak,weak?2:1);
-        document.getElementById('bossFill').style.width=Math.max(0,S.boss.hp/S.boss.maxhp*100)+'%';
-        if(weak)flashBanner('弱点ヒット！','×3 ダメージ',700);
-        bumpCombo();if(S.boss.hp<=0)bossDefeated();
-        scene.remove(pr.mesh);return false;
-      }
-      for(let i=0;i<S.enemies.length;i++){const e=S.enemies[i];
-        if(e.userData.ambient&&pr.mesh.position.distanceTo(e.position)<1.2){
-          e.userData.hp-=pr.dmg;spawnHit(e.position,0x88ccff,false,1);
-          if(e.userData.hp<=0){scene.remove(e);S.enemies.splice(i,1);bumpCombo();}
-          scene.remove(pr.mesh);return false;
-        }}
-    } else {
-      if(pr.mesh.position.distanceTo(S.player.position)<FORMS[S.form].size+0.7){
-        damagePlayer(pr.dmg);scene.remove(pr.mesh);return false;
-      }
-    }
-    if(pr.life<=0||pr.mesh.position.y<0){scene.remove(pr.mesh);return false;}
-    return true;
-  });
-  // shockwave damage
-  if(S.shockActive){
-    S.shockActive.t+=dt;const r=S.shockActive.t*22;
-    if(S.bossMesh){const d=S.bossMesh.position.distanceTo(S.shockActive.pos);
-      if(Math.abs(d-r)<2&&!S.shockActive.hit){const weak=isWeaknessSatisfied(S.boss);
-        S.boss.hp-=(FORMS.wolf.dmg+10)*(weak?3:1);spawnHit(S.bossMesh.position,weak?0xffe066:0xa0d8ff,weak,2);
-        document.getElementById('bossFill').style.width=Math.max(0,S.boss.hp/S.boss.maxhp*100)+'%';
-        bumpCombo();S.shockActive.hit=true;if(S.boss.hp<=0)bossDefeated();}}
-    if(S.shockActive.t>1)S.shockActive=null;
-  }
-}
-
-/* ---------- FX ---------- */
-function spawnHit(pos,color,big,scaleMul=1){
-  const g=new THREE.Mesh(new THREE.RingGeometry(0.2,(big?1.4:0.7)*scaleMul,16),
-    new THREE.MeshBasicMaterial({color,transparent:true,opacity:0.95,side:THREE.DoubleSide}));
-  g.position.copy(pos);g.position.y+=1;g.lookAt(camera.position);g.userData.t=0;
-  scene.add(g);S.fx.push({mesh:g,t:0});
-}
-
-function damagePlayer(amt){
-  if(S.hurtCD>0)return;S.hurtCD=0.55;
-  S.vitality=Math.max(0,S.vitality-amt);
-  document.getElementById('healthFill').style.width=S.vitality+'%';
-  S.combo=0;showCombo();cameraShake(0.35);
-  // red flash
-  flashRed();
-  if(S.vitality<=0)gameOver();
-}
-let redEl;
-function flashRed(){
-  if(!redEl){redEl=document.createElement('div');
-    redEl.style.cssText='position:fixed;inset:0;z-index:23;pointer-events:none;background:radial-gradient(circle,transparent 50%,#ff000055 100%);opacity:0;transition:opacity .1s;';
-    document.body.appendChild(redEl);}
-  redEl.style.opacity=1;setTimeout(()=>redEl.style.opacity=0,120);
-}
-
-function bossDefeated(){
-  const st=STAGES[S.stageIdx];
-  document.getElementById('bossWrap').style.opacity=0;
-  for(let i=0;i<8;i++)setTimeout(()=>{if(S.bossMesh)spawnHit(S.bossMesh.position,0xffe066,true,1.5);},i*70);
-  setTimeout(()=>{if(S.bossMesh){scene.remove(S.bossMesh);S.bossMesh=null;}},250);
-  S.stageClear=true;S.shards++;S.lockOn=null;
-  flashBanner(st.boss.emoji+' '+st.boss.name+' 撃破！',(st.unlock?('「'+FORMS[st.unlock].name+'」形態を解放！'):'記憶の断片を入手'),3000);
-  addAlly(st.boss.color);
-  if(st.unlock){FORMS[st.unlock].unlocked=true;refreshWheel();}
-  S.vitality=Math.min(100,S.vitality+30);
-  if(st.choice){setTimeout(askChoice,3200);return;}
-  setTimeout(nextStage,3400);
-}
-
-function askChoice(){
-  const b=document.getElementById('banner'),s=document.getElementById('subBanner');
-  b.style.opacity=1;s.style.opacity=1;b.innerHTML='選択せよ';
-  s.innerHTML='【A】倒す（革命）　／　【B】逃がす（共存）　— A/B キー or 画面ボタン';
-  const handler=(e)=>{let c=null;if(e.key&&e.key.toLowerCase()==='a')c='revolution';if(e.key&&e.key.toLowerCase()==='b')c='coexist';if(c){S.choiceMade=c;cleanup();}};
-  const ta=()=>{S.choiceMade='revolution';cleanup();};
-  const tb=()=>{S.choiceMade='coexist';cleanup();};
-  function cleanup(){removeEventListener('keydown',handler);
-    document.getElementById('btnA').removeEventListener('touchstart',ta);
-    document.getElementById('btnB').removeEventListener('touchstart',tb);
-    flashBanner(S.choiceMade==='coexist'?'共存の道を選んだ':'革命の道を選んだ',
-      S.choiceMade==='coexist'?'記憶の断片を全て集めれば真エンドへ':'生態系を取り戻すが縄張りも荒廃する',3000);
-    setTimeout(nextStage,3200);}
-  addEventListener('keydown',handler);
-  document.getElementById('btnA').addEventListener('touchstart',ta,{passive:true});
-  document.getElementById('btnB').addEventListener('touchstart',tb,{passive:true});
-}
-
-function addAlly(color){S.allies.push(color);}
-function updateTerritory(dt){
-  if(!S.territory)return;
-  while(S.territory.children.length<S.allies.length){
-    const i=S.territory.children.length;
-    const ring=new THREE.Mesh(new THREE.RingGeometry(6+i*3,6.4+i*3,48),
-      new THREE.MeshBasicMaterial({color:0x6fae6f,transparent:true,opacity:0,side:THREE.DoubleSide}));
-    ring.rotation.x=-Math.PI/2;ring.position.y=0.05;ring.userData.grow=0;S.territory.add(ring);
-  }
-  S.territory.children.forEach(r=>{if(r.userData.grow<0.45){r.userData.grow+=dt*0.3;r.material.opacity=r.userData.grow;}});
-}
-
-function nextStage(){
-  if(S.stageIdx>=STAGES.length-1)return victory();
-  S.stageIdx++;S.vitality=Math.min(100,S.vitality+10);S.instinct=100;
-  buildStage();updateHUD();
-  const st=STAGES[S.stageIdx];
-  flashBanner(st.tag.split('—')[1].trim(),st.obj,3200);setObjective(st.obj);
-}
-
-function gameOver(){
-  running=false;
-  showEnd('💀 GAME OVER',S.allies.length===0?'仲間も縄張りも失った……孤独な末路':'体力が尽きた — 弱さは時に死を意味する');
-}
-function victory(){
-  running=false;let title,desc;
-  if(S.choiceMade==='coexist'){title='🌍 共存エンド（True）';desc='原始人形態を保ち、人間と生態系の橋渡しに。根のネットワークが世界へ広がる。';}
-  else if(S.choiceMade==='revolution'){title='⚔ 革命エンド';desc='人間文明を後退させ生態系を取り戻した。だが自らの縄張りも戦争で荒廃した。';}
-  else{title='🏆 CLEAR';desc='食物連鎖を逆走し、頂点を越え、システムそのものを打ち破った。';}
-  showEnd(title,desc+'　— 記憶の断片 '+S.shards+'/'+STAGES.length);
-}
-function showEnd(title,desc){
-  if(document.pointerLockElement)document.exitPointerLock();
-  const t=document.getElementById('title');t.style.display='flex';
-  t.querySelector('h1').textContent=title;t.querySelector('.sub').textContent=desc;
-  t.querySelector('.chain').textContent='🐭 → 🦊 → 🐍 → 🦅 → 🐺 → 🧍 → ⚡';
-  t.querySelector('.tag').innerHTML='"You were prey. Now you are everything.<br>But everything has something to lose."';
-  document.getElementById('startBtn').textContent='もう一度';
-}
-
-/* ---------- RETICLE / LOCK MARKER ---------- */
-const _v=new THREE.Vector3();
-function project(pos){
-  _v.copy(pos);_v.project(camera);
-  return {x:(_v.x*0.5+0.5)*W(),y:(-_v.y*0.5+0.5)*H(),z:_v.z};
-}
-function updateReticle(){
-  const ret=document.getElementById('reticle');
-  const lock=document.getElementById('lockMark');
-  // show reticle for ranged/aim forms or when not locked
-  ret.classList.add('show');
-  ret.classList.toggle('locked',!!S.lockOn);
-  if(S.lockOn&&S.lockOn.parent){
-    const p=project(S.lockOn.position);
-    if(p.z<1){lock.style.opacity=1;lock.style.left=p.x+'px';lock.style.top=p.y+'px';}
-    else lock.style.opacity=0;
-  } else lock.style.opacity=0;
-}
-
-/* ---------- RENDER ---------- */
-let fpsT=0,fpsC=0;
-function loop(){
-  requestAnimationFrame(loop);
-  const dt=Math.min(0.05,clock.getDelta());
-  if(running)update(dt);
-  // fx
-  S.fx=S.fx.filter(o=>{o.t+=dt*(o.shock?1:2.5);
-    if(o.shock){o.mesh.scale.setScalar(1+o.t*22);o.mesh.material.opacity=Math.max(0,0.8-o.t*0.8);}
-    else{o.mesh.scale.setScalar(1+o.t);o.mesh.material.opacity=Math.max(0,0.95-o.t);o.mesh.lookAt(camera.position);}
-    if(o.t>1){scene.remove(o.mesh);return false;}return true;});
-  // shake
-  if(S.shake>0){camera.position.x+=(Math.random()-.5)*S.shake;camera.position.y+=(Math.random()-.5)*S.shake;S.shake*=0.85;if(S.shake<0.01)S.shake=0;}
-  renderer.render(scene,camera);
-  // fps
-  fpsC++;fpsT+=dt;if(fpsT>=1){document.getElementById('fps').textContent='FPS '+fpsC;fpsC=0;fpsT=0;}
-}
-
-/* ---------- START ---------- */
-function start(){
-  S.stageIdx=0;S.form='mouse';S.instinct=100;S.vitality=100;
-  S.allies=[];S.shards=0;S.choiceMade=null;S.combo=0;S.fx=[];S.projectiles=[];
-  ORDER.forEach(k=>FORMS[k].unlocked=(k==='mouse'));
-  S.yaw=0;S.pitch=-0.22;S.lockOn=null;
-  buildStage();updateHUD();
-  document.getElementById('title').style.display='none';
-  running=true;
-  document.getElementById('reticle').classList.add('show');
-  flashBanner('STAGE 01 — 草原の夜明け','キツネを倒し、最初の変身を掴め',3200);
-  setObjective(STAGES[0].obj);
-}
-
-return {init,start,loopStart:loop};
+  const sfx = {
+    hit:()=>{ tone(220,0.08,'square',0.18,90); noise(0.06,0.12,900); },
+    crit:()=>{ tone(440,0.12,'sawtooth',0.22,140); noise(0.09,0.16,1600); },
+    swing:()=>{ noise(0.12,0.10,2200); },
+    hurt:()=>{ tone(160,0.18,'sawtooth',0.22,70); },
+    shoot:()=>{ tone(620,0.1,'triangle',0.16,260); },
+    dash:()=>{ noise(0.18,0.12,3000); tone(300,0.12,'sine',0.1,520); },
+    jump:()=>{ tone(380,0.14,'sine',0.14,640); },
+    transform:()=>{ tone(180,0.5,'sawtooth',0.2,520); tone(90,0.6,'sine',0.16,360); },
+    levelup:()=>{ [523,659,784,1047].forEach((f,i)=>setTimeout(()=>tone(f,0.22,'triangle',0.16),i*90)); },
+    pickup:()=>{ tone(880,0.08,'sine',0.12,1320); },
+    kill:()=>{ tone(330,0.16,'square',0.16,160); setTimeout(()=>tone(220,0.2,'sine',0.12,110),60); },
+    howl:()=>{ tone(220,0.7,'sawtooth',0.18,330); tone(110,0.8,'sine',0.16,180); },
+    bossroar:()=>{ tone(80,0.9,'sawtooth',0.26,140); noise(0.7,0.2,500); },
+    ui:()=>{ tone(660,0.05,'sine',0.1,880); },
+    death:()=>{ tone(220,1.2,'sawtooth',0.24,40); },
+    win:()=>{ [523,659,784,1047,1319].forEach((f,i)=>setTimeout(()=>tone(f,0.3,'triangle',0.16),i*140)); },
+  };
+  return { ensure, setVol, sfx, resume:()=>{ ensure(); if(ctx&&ctx.state==='suspended') ctx.resume(); } };
 })();
 
-window.addEventListener('load',()=>{
-  GAME.init();GAME.loopStart();
-  document.getElementById('startBtn').addEventListener('click',()=>GAME.start());
-  if(/[?&]autostart=1/.test(location.search))GAME.start();
-});
+/* ============================ 4. レンダラ・シーン構築 ============================ */
+function initEngine(){
+  const scene = new THREEJS.Scene();
+  scene.fog = new THREEJS.FogExp2(0x9cb0a0, 0.012);
+  GAME.scene = scene;
+
+  const camera = new THREEJS.PerspectiveCamera(62, innerWidth/innerHeight, 0.1, 1200);
+  camera.position.set(0, 8, 14);
+  GAME.camera = camera;
+
+  const renderer = new THREEJS.WebGLRenderer({ antialias:true, powerPreference:'high-performance' });
+  renderer.setSize(innerWidth, innerHeight);
+  renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+  renderer.shadowMap.enabled = true;
+  renderer.shadowMap.type = THREEJS.PCFSoftShadowMap;
+  renderer.toneMapping = THREEJS.ACESFilmicToneMapping;
+  renderer.toneMappingExposure = 1.05;
+  renderer.outputColorSpace = THREEJS.SRGBColorSpace;
+  document.getElementById('game').appendChild(renderer.domElement);
+  GAME.renderer = renderer;
+  GAME.clock = new THREEJS.Clock();
+  GAME.noise = makeNoise(1337);
+
+  // lights
+  const hemi = new THREEJS.HemisphereLight(0xbfd8e8, 0x3a4a3a, 0.7);
+  scene.add(hemi); GAME.hemi = hemi;
+  const sun = new THREEJS.DirectionalLight(0xfff1d0, 1.4);
+  sun.position.set(40, 80, 30);
+  sun.castShadow = true;
+  sun.shadow.mapSize.set(2048, 2048);
+  const sc = sun.shadow.camera;
+  sc.left=-80; sc.right=80; sc.top=80; sc.bottom=-80; sc.near=1; sc.far=300;
+  sun.shadow.bias = -0.0004;
+  scene.add(sun); scene.add(sun.target); GAME.sun = sun;
+  const moon = new THREEJS.DirectionalLight(0x8ea0d0, 0.0);
+  moon.position.set(-30,60,-20); scene.add(moon); GAME.moon = moon;
+
+  // ambient fill point light following player (rim)
+  const rim = new THREEJS.PointLight(0xffe0a0, 0.0, 30); scene.add(rim); GAME.rim = rim;
+
+  window.addEventListener('resize', onResize);
+  onResize();
+}
+function onResize(){
+  if(!GAME.camera) return;
+  GAME.camera.aspect = innerWidth/innerHeight;
+  GAME.camera.updateProjectionMatrix();
+  GAME.renderer.setSize(innerWidth, innerHeight);
+}
+
+/* ============================ 5. 地形・ワールド ============================ */
+const WORLD_SIZE = 240;       // playable radius-ish
+const GROUND_SEG = 96;
+let groundMesh = null, waterMesh = null;
+
+// height function (depends on stage)
+function terrainHeight(x, z){
+  const n = GAME.noise;
+  const s = GAME.stageIndex;
+  let h = 0;
+  if (s === 2){ // cliff stage — big elevation
+    h += n(x*0.012, z*0.012) * 14;
+    h += n(x*0.04, z*0.04) * 4;
+    // central plateau
+    const d = Math.sqrt(x*x+z*z);
+    h += clamp((40-d)*0.5, 0, 18);
+  } else if (s === 5){ // city — mostly flat platforms
+    h += n(x*0.02, z*0.02)*1.5;
+  } else {
+    h += n(x*0.018, z*0.018) * 5.5;
+    h += n(x*0.06, z*0.06) * 1.4;
+  }
+  // gentle bowl so player stays in
+  const d2 = (x*x+z*z);
+  h -= Math.max(0, (d2 - (WORLD_SIZE*0.55)*(WORLD_SIZE*0.55))) * 0.0006;
+  return h;
+}
+
+function buildGround(stage){
+  if (groundMesh){ GAME.scene.remove(groundMesh); groundMesh.geometry.dispose(); }
+  const geo = new THREEJS.PlaneGeometry(WORLD_SIZE*1.4, WORLD_SIZE*1.4, GROUND_SEG, GROUND_SEG);
+  geo.rotateX(-Math.PI/2);
+  const pos = geo.attributes.position;
+  const colors = [];
+  const base = new THREEJS.Color(stage.ground);
+  const hi = base.clone().offsetHSL(0, 0.05, 0.12);
+  const lo = base.clone().offsetHSL(0, -0.05, -0.10);
+  for (let i=0;i<pos.count;i++){
+    const x = pos.getX(i), z = pos.getZ(i);
+    const h = terrainHeight(x, z);
+    pos.setY(i, h);
+    const t = clamp((h+6)/18, 0, 1);
+    const c = lo.clone().lerp(hi, t);
+    // slope darkening handled by lighting; add subtle noise tint
+    c.offsetHSL(0, 0, (GAME.noise(x*0.2,z*0.2))*0.05);
+    colors.push(c.r, c.g, c.b);
+  }
+  geo.setAttribute('color', new THREEJS.Float32BufferAttribute(colors, 3));
+  geo.computeVertexNormals();
+  const mat = new THREEJS.MeshStandardMaterial({ vertexColors:true, roughness:0.95, metalness:0.0, flatShading:false });
+  groundMesh = new THREEJS.Mesh(geo, mat);
+  groundMesh.receiveShadow = true;
+  GAME.scene.add(groundMesh);
+  GAME.groundMesh = groundMesh;
+
+  // water plane for marsh/others
+  if (waterMesh){ GAME.scene.remove(waterMesh); }
+  if (stage.id === 1 || stage.id === 0){
+    const wgeo = new THREEJS.PlaneGeometry(WORLD_SIZE*1.4, WORLD_SIZE*1.4, 1, 1);
+    wgeo.rotateX(-Math.PI/2);
+    const wmat = new THREEJS.MeshStandardMaterial({ color: stage.id===1?0x244a44:0x2a4a5a, transparent:true, opacity:0.78, roughness:0.18, metalness:0.4 });
+    waterMesh = new THREEJS.Mesh(wgeo, wmat);
+    waterMesh.position.y = stage.id===1 ? -1.2 : -3.6;
+    GAME.scene.add(waterMesh); GAME.waterMesh = waterMesh;
+  } else { GAME.waterMesh = null; }
+}
+
+// generate decorative props per stage (trees, rocks, grass, buildings)
+function buildProps(stage){
+  // clear
+  GAME.props.forEach(p=>GAME.scene.remove(p.mesh));
+  GAME.props = [];
+  if (GAME.grassMesh){ GAME.scene.remove(GAME.grassMesh); GAME.grassMesh=null; }
+
+  const placeOnGround = (x,z)=>terrainHeight(x,z);
+  const addProp = (mesh, x, z, solid=false, r=1)=>{
+    mesh.position.set(x, placeOnGround(x,z), z);
+    mesh.castShadow = true; mesh.receiveShadow = true;
+    GAME.scene.add(mesh);
+    GAME.props.push({ mesh, solid, r, x, z });
+  };
+
+  const R = WORLD_SIZE*0.5;
+  const treeCount = stage.id===5?0 : (stage.id===3?70 : 46);
+  const rockCount = stage.id===2?80 : 34;
+
+  // trees
+  for (let i=0;i<treeCount;i++){
+    const x = rand(-R,R), z = rand(-R,R);
+    if (dist2(x,z,0,0) < 100) continue;
+    const g = new THREEJS.Group();
+    const th = rand(3,7);
+    const trunk = new THREEJS.Mesh(
+      new THREEJS.CylinderGeometry(0.25,0.45,th,6),
+      new THREEJS.MeshStandardMaterial({ color:0x4a3a28, roughness:1 }));
+    trunk.position.y = th/2; trunk.castShadow=true;
+    g.add(trunk);
+    const leafColor = stage.id===3?0x1f3a24 : stage.id===1?0x2f5a3a : 0x3a6a3a;
+    const lc = new THREEJS.Color(leafColor).offsetHSL(0,0,rand(-0.05,0.06));
+    for (let k=0;k<3;k++){
+      const leaf = new THREEJS.Mesh(
+        new THREEJS.IcosahedronGeometry(rand(1.6,2.6),0),
+        new THREEJS.MeshStandardMaterial({ color:lc, roughness:1, flatShading:true }));
+      leaf.position.set(rand(-0.8,0.8), th + k*1.2 - 0.5, rand(-0.8,0.8));
+      leaf.castShadow=true;
+      g.add(leaf);
+    }
+    addProp(g, x, z, true, 1.0);
+  }
+  // rocks
+  for (let i=0;i<rockCount;i++){
+    const x = rand(-R,R), z = rand(-R,R);
+    if (dist2(x,z,0,0) < 60) continue;
+    const s = rand(0.8,3.2);
+    const rock = new THREEJS.Mesh(
+      new THREEJS.DodecahedronGeometry(s,0),
+      new THREEJS.MeshStandardMaterial({ color:0x6a6a64, roughness:0.95, flatShading:true }));
+    rock.rotation.set(rand(TAU),rand(TAU),rand(TAU));
+    addProp(rock, x, z, s>1.6, s*0.7);
+  }
+  // city buildings
+  if (stage.id===5){
+    for (let i=0;i<40;i++){
+      const x = rand(-R,R), z = rand(-R,R);
+      if (dist2(x,z,0,0) < 120) continue;
+      const w=rand(4,10), h=rand(8,28), d=rand(4,10);
+      const b = new THREEJS.Mesh(
+        new THREEJS.BoxGeometry(w,h,d),
+        new THREEJS.MeshStandardMaterial({ color:0x2a2e36, roughness:0.6, metalness:0.3, emissive:0x101418 }));
+      b.position.y = placeOnGround(x,z)+h/2;
+      b.castShadow=true; b.receiveShadow=true;
+      GAME.scene.add(b);
+      GAME.props.push({ mesh:b, solid:true, r:Math.max(w,d)*0.55, x, z });
+    }
+  }
+
+  // instanced grass for fields
+  if (stage.id===0 || stage.id===3 || stage.id===1){
+    buildGrass(stage);
+  }
+}
+
+function buildGrass(stage){
+  const count = 4000;
+  const blade = new THREEJS.PlaneGeometry(0.18, 1.0);
+  blade.translate(0, 0.5, 0);
+  const mat = new THREEJS.MeshStandardMaterial({
+    color: stage.id===1?0x3a6a4a:0x4a7a3a, side:THREEJS.DoubleSide, roughness:1,
+    transparent:true, alphaTest:0.1 });
+  const inst = new THREEJS.InstancedMesh(blade, mat, count);
+  const dummy = new THREEJS.Object3D();
+  const R = WORLD_SIZE*0.48;
+  let n=0;
+  for (let i=0;i<count;i++){
+    const x=rand(-R,R), z=rand(-R,R);
+    if (dist2(x,z,0,0)<40) continue;
+    const h=terrainHeight(x,z);
+    dummy.position.set(x,h,z);
+    dummy.rotation.y = rand(TAU);
+    const s = rand(0.6,1.5);
+    dummy.scale.set(rand(0.8,1.3), s, 1);
+    dummy.updateMatrix();
+    inst.setMatrixAt(n++, dummy.matrix);
+  }
+  inst.count = n;
+  inst.castShadow = false; inst.receiveShadow = true;
+  inst.instanceMatrix.needsUpdate = true;
+  GAME.scene.add(inst);
+  GAME.grassMesh = inst;
+}
 </script>
 </body>
 </html>
