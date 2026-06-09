@@ -1901,6 +1901,420 @@ function spawnEnemy(typeId, x, z, opts={}){
   GAME.enemies.push(e);
   return e;
 }
+
+/* ============================ 12. カメラ ============================ */
+const Cam = {
+  yawVel:{v:0}, posDamp:new THREEJS.Vector3(),
+  curPos:new THREEJS.Vector3(0,8,14), curLook:new THREEJS.Vector3(),
+  update(dt){
+    if (!PLAYER) return;
+    const p = PLAYER.pos;
+    const yaw = Input.yaw, pitch = Input.pitch;
+    let dist = PLAYER.form.canFly && PLAYER.height>4 ? 11 : 8.5;
+    if (GAME.target && GAME.target.alive) dist = 9.5;
+    // boom position behind player based on yaw/pitch
+    const ox = -Math.sin(yaw)*Math.cos(pitch)*dist;
+    const oz = -Math.cos(yaw)*Math.cos(pitch)*dist;
+    const oy = 3.2 + Math.sin(pitch)*dist + PLAYER.height*0.3;
+    const target = _tmpV.set(p.x+ox, p.y+oy, p.z+oz);
+    // avoid clipping into ground
+    const minY = terrainHeight(target.x, target.z)+1.5;
+    if (target.y<minY) target.y=minY;
+    const k = clamp(10*dt,0,1);
+    this.curPos.lerp(target, k);
+    GAME.camera.position.copy(this.curPos);
+    // shake
+    if (GAME.shake>0){
+      GAME.camera.position.x += rand(-1,1)*GAME.shake*0.4;
+      GAME.camera.position.y += rand(-1,1)*GAME.shake*0.4;
+      GAME.shake = Math.max(0, GAME.shake - dt*2.5);
+    }
+    // look target
+    let lookAt = _tmpV2.set(p.x, p.y+1.4, p.z);
+    if (GAME.target && GAME.target.alive){
+      lookAt.lerp(_tmpV3.set(GAME.target.pos.x, GAME.target.pos.y+1, GAME.target.pos.z), 0.32);
+    }
+    this.curLook.lerp(lookAt, clamp(12*dt,0,1));
+    GAME.camera.lookAt(this.curLook);
+  }
+};
+
+/* ============================ 13. ロックオン ============================ */
+function toggleLockOn(){
+  if (GAME.target && GAME.target.alive){
+    // cycle to next nearest in view
+    cycleLock();
+  } else {
+    GAME.target = nearestEnemyInView();
+    if (GAME.target){ Sound.sfx.ui(); document.getElementById('reticle').classList.add('locked'); }
+  }
+  updateLockUI();
+}
+function clearLock(){ GAME.target=null; document.getElementById('reticle').classList.remove('locked'); document.getElementById('lockMark').style.opacity=0; }
+function nearestEnemyInView(){
+  let best=null, bestScore=Infinity;
+  for (const e of GAME.enemies){
+    if (!e.alive) continue;
+    const d=Math.hypot(e.pos.x-PLAYER.pos.x, e.pos.z-PLAYER.pos.z);
+    if (d>50) continue;
+    // prefer in front of camera
+    const v=_tmpV.set(e.pos.x,e.pos.y+1,e.pos.z).project(GAME.camera);
+    if (v.z>1) continue;
+    const screenDist = Math.hypot(v.x, v.y);
+    const score = screenDist*30 + d;
+    if (score<bestScore){ bestScore=score; best=e; }
+  }
+  return best;
+}
+function cycleLock(){
+  const cur=GAME.target;
+  const list=GAME.enemies.filter(e=>e.alive && Math.hypot(e.pos.x-PLAYER.pos.x,e.pos.z-PLAYER.pos.z)<50);
+  if (list.length<=1){ return; }
+  list.sort((a,b)=>Math.hypot(a.pos.x-PLAYER.pos.x,a.pos.z-PLAYER.pos.z)-Math.hypot(b.pos.x-PLAYER.pos.x,b.pos.z-PLAYER.pos.z));
+  let idx=list.indexOf(cur);
+  GAME.target=list[(idx+1)%list.length];
+  Sound.sfx.ui();
+}
+function updateLockUI(){
+  const lm=document.getElementById('lockMark');
+  if (!GAME.target||!GAME.target.alive){ lm.style.opacity=0; return; }
+  const v=_tmpV.set(GAME.target.pos.x,GAME.target.pos.y+1,GAME.target.pos.z).project(GAME.camera);
+  if (v.z>1){ lm.style.opacity=0; return; }
+  lm.style.left=(v.x*0.5+0.5)*innerWidth+'px';
+  lm.style.top=(-v.y*0.5+0.5)*innerHeight+'px';
+  lm.style.opacity=1;
+}
+
+/* ============================ 14. 感覚モード（Sense Mode） ============================ */
+const SenseMode = {
+  active:false,
+  toggle(){
+    this.active=!this.active;
+    const f=PLAYER.form, tag=document.getElementById('senseTag'), vig=document.getElementById('senseVig');
+    if (this.active){
+      const map={ ultrasonic:['🔊 超音波感知','rgba(90,90,200,0.18)'], smell:['👃 嗅覚追跡','rgba(200,150,80,0.15)'],
+        thermal:['🌡️ 熱源探知','rgba(220,60,60,0.18)'], aerial:['🦅 上空俯瞰','rgba(120,180,255,0.12)'],
+        pack:['🐺 群れの感覚','rgba(150,150,200,0.15)'], tool:['🔧 道具の感覚','rgba(180,180,120,0.12)'] };
+      const m=map[f.sense]||map.smell;
+      tag.textContent=m[0]; tag.style.opacity=1;
+      vig.style.background=`radial-gradient(circle at 50% 50%, transparent 30%, ${m[1]} 100%)`;
+      vig.style.opacity=1;
+      // highlight enemies briefly
+      GAME.enemies.forEach(e=>{ if(e.alive){ e.aggro=true; } });
+      Sound.sfx.ui();
+    } else { tag.style.opacity=0; vig.style.opacity=0; }
+  }
+};
+
+/* ============================ 15. 仲間（Ally）システム ============================ */
+class Ally{
+  constructor(typeId, x, z){
+    const fdef=FORMS[ENEMY_TYPES[typeId]?.form||'wolf'];
+    this.parts=buildCreature('wolf', 0x88a0c0, 0xc0d0e0, 0.9);
+    this.group=this.parts.group; GAME.scene.add(this.group);
+    this.pos=V3(x,terrainHeight(x,z),z); this.vel=V3(0,0,0);
+    this.hp=120; this.maxHp=120; this.atkCd=0; this.facing=0; this.alive=true;
+    this.radius=1;
+    this.rallyT=0;
+  }
+  rally(){ this.rallyT=4; this.hp=this.maxHp; }
+  update(dt){
+    if(!this.alive) return;
+    this.atkCd=Math.max(0,this.atkCd-dt); this.rallyT=Math.max(0,this.rallyT-dt);
+    // find nearest enemy
+    let tgt=null,bd=1e9;
+    for(const e of GAME.enemies){ if(!e.alive)continue; const d=dist2(e.pos.x,e.pos.z,this.pos.x,this.pos.z); if(d<bd){bd=d;tgt=e;} }
+    let ang;
+    if (tgt && Math.sqrt(bd)<28){
+      ang=Math.atan2(tgt.pos.x-this.pos.x, tgt.pos.z-this.pos.z);
+      this.vel.x+=Math.sin(ang)*8*0.5; this.vel.z+=Math.cos(ang)*8*0.5;
+      if (Math.sqrt(bd)<3 && this.atkCd<=0){ this.atkCd=0.8; tgt.takeDamage(20*PLAYER.bonus.allyDmg*(this.rallyT>0?1.5:1), this.pos); spawnHitFX(tgt.pos,false,0x88a0c0); }
+    } else {
+      // follow player
+      ang=Math.atan2(PLAYER.pos.x-this.pos.x, PLAYER.pos.z-this.pos.z);
+      const d=Math.hypot(PLAYER.pos.x-this.pos.x, PLAYER.pos.z-this.pos.z);
+      if (d>4){ this.vel.x+=Math.sin(ang)*9*0.5; this.vel.z+=Math.cos(ang)*9*0.5; }
+    }
+    this.pos.x+=this.vel.x*dt; this.pos.z+=this.vel.z*dt; this.vel.x*=0.85; this.vel.z*=0.85;
+    this.pos.y=terrainHeight(this.pos.x,this.pos.z);
+    this.group.position.copy(this.pos);
+    this.facing=approachAngle(this.facing,ang,8*dt); this.group.rotation.y=this.facing;
+    animateCreature(this.parts, GAME.time+this.pos.z, clamp(Math.hypot(this.vel.x,this.vel.z)/8,0,1), true, false);
+  }
+}
+function addAlly(){
+  if (PLAYER.allies.length >= PLAYER.bonus.maxAllies) return;
+  const a=new Ally('wolfMinion', PLAYER.pos.x+rand(-3,3), PLAYER.pos.z+rand(-3,3));
+  PLAYER.allies.push(a); GAME.allies.push(a);
+  toast('<b>仲間</b>が縄張りに加わった!');
+}
+
+/* ============================ 16. 落とし物・アイテム ============================ */
+function spawnPickup(x, z, kind){
+  const colors={ berry:0x5a3a8a, meat:0xc05050, herb:0x4a8a3a, feather:0xc8c0a0, gold:0xe7c878, relic:0xff8aff, shard:0x6ad0ff };
+  const m=new THREEJS.Mesh(
+    kind==='gold'?new THREEJS.OctahedronGeometry(0.3):new THREEJS.IcosahedronGeometry(0.32,0),
+    makeStdMat(colors[kind]||0xffffff,{emissive:colors[kind]||0xffffff, ei:0.5, flat:false}));
+  m.position.set(x, terrainHeight(x,z)+0.6, z);
+  GAME.scene.add(m);
+  GAME.pickups.push({ mesh:m, x, z, kind, t:0, relicId:null });
+  return GAME.pickups[GAME.pickups.length-1];
+}
+function updatePickups(dt){
+  for (let i=GAME.pickups.length-1;i>=0;i--){
+    const p=GAME.pickups[i]; p.t+=dt;
+    p.mesh.position.y = terrainHeight(p.x,p.z)+0.6+Math.sin(p.t*3)*0.18;
+    p.mesh.rotation.y += dt*2;
+    if (PLAYER && dist2(p.x,p.z,PLAYER.pos.x,PLAYER.pos.z)<3.2){
+      collectPickup(p);
+      GAME.scene.remove(p.mesh); GAME.pickups.splice(i,1);
+    }
+  }
+}
+function collectPickup(p){
+  Sound.sfx.pickup();
+  spawnParticle(p.mesh.position, p.mesh.material.color.getHex(), {vel:V3(0,3,0),life:0.5,grav:false});
+  if (p.kind==='gold'){ PLAYER.addGold(randInt(8,22)); }
+  else if (p.kind==='shard'){ PLAYER.memoryShards++; toast('🔹 記憶の断片を入手'); updateBarsUI(); }
+  else if (p.kind==='relic'){ const r=p.relicId||pick(RELICS).id; PLAYER.addItem('relic:'+r); toast('🏺 遺物「'+RELICS.find(x=>x.id===r).name+'」を入手'); }
+  else { PLAYER.addItem(p.kind); toast(CONSUMABLES[p.kind].icon+' '+CONSUMABLES[p.kind].name+'を入手'); }
+}
+
+/* interactables: shrines that heal & give buffs, NPC */
+function tryInteract(){
+  for (const p of GAME.props){
+    if (p.shrine && dist2(PLAYER.pos.x,PLAYER.pos.z,p.x,p.z)<9){
+      if (p.used) { toast('この祠は既に使った'); return; }
+      p.used=true; p.mesh.traverse(o=>{if(o.isMesh&&o.material)o.material.emissiveIntensity=0;});
+      PLAYER.heal(PLAYER.maxHp); PLAYER.stamina=PLAYER.maxStamina; PLAYER.instinct=PLAYER.maxInstinct;
+      banner('🏛️ 生命の祠', '全回復！', 0.8); Sound.sfx.levelup();
+      return;
+    }
+  }
+  toast('近くに調べられるものはない');
+}
+
+/* ============================ 17. UI 更新 ============================ */
+const $ = id=>document.getElementById(id);
+function updateBarsUI(){
+  if (!PLAYER) return;
+  $('hpFill').style.width = clamp(PLAYER.hp/PLAYER.maxHp*100,0,100)+'%';
+  $('stFill').style.width = clamp(PLAYER.stamina/PLAYER.maxStamina*100,0,100)+'%';
+  $('inFill').style.width = clamp(PLAYER.instinct/PLAYER.maxInstinct*100,0,100)+'%';
+  $('xpFill').style.width = clamp(PLAYER.xp/PLAYER.xpNext*100,0,100)+'%';
+  $('hpTxt').textContent = Math.ceil(PLAYER.hp)+'/'+PLAYER.maxHp;
+  $('xpTxt').textContent = 'Lv.'+PLAYER.level;
+  $('lvlBadge').textContent = 'Lv.'+PLAYER.level;
+}
+function updateFormUI(){
+  if (!PLAYER) return;
+  const f=PLAYER.form;
+  $('formEmoji').textContent=f.emoji; $('formName').textContent=f.name; $('formType').textContent=f.type;
+  // wheel
+  const w=$('formWheel'); w.innerHTML='';
+  FORM_ORDER.forEach(fid=>{
+    const fd=FORMS[fid];
+    const chip=document.createElement('div');
+    chip.className='formChip'+(PLAYER.unlocked[fid]?' unlocked':' locked')+(fid===f.id?' active':'');
+    chip.innerHTML=`<span class="key">${fd.key}</span>${fd.emoji}`;
+    chip.onclick=()=>{ if(PLAYER.unlocked[fid]) PLAYER.transform(fid); };
+    w.appendChild(chip);
+  });
+  // mobile form bar
+  const mf=$('mFormBar'); if(mf){ mf.innerHTML='';
+    FORM_ORDER.forEach(fid=>{ if(!PLAYER.unlocked[fid])return;
+      const fd=FORMS[fid]; const c=document.createElement('div');
+      c.className='formChip unlocked'+(fid===f.id?' active':''); c.textContent=fd.emoji;
+      c.style.pointerEvents='auto'; c.ontouchstart=e=>{e.preventDefault();PLAYER.transform(fid);};
+      mf.appendChild(c);
+    });
+  }
+}
+function updateSkillBarUI(){
+  if (!PLAYER) return;
+  const sb=$('skillBar'); sb.innerHTML='';
+  const sk=PLAYER.form.skill;
+  const skills=[
+    { icon:sk.icon, key:'K/RMB', name:sk.name, cd:PLAYER.skillCdT, maxCd:sk.cd*PLAYER.bonus.cdMul },
+    { icon:'💨', key:'Shift', name:'ダッシュ', cd:PLAYER.dashCdT, maxCd:0.9 },
+    { icon:'👁️', key:'E', name:'感覚', cd:0, maxCd:1 },
+  ];
+  skills.forEach(s=>{
+    const el=document.createElement('div'); el.className='skill';
+    el.innerHTML=`<span class="sk">${s.key}</span><span class="si">${s.icon}</span><span class="nm">${s.name}</span><div class="cd"></div>`;
+    sb.appendChild(el); el._cd=el.querySelector('.cd'); el._data=s;
+  });
+  GAME._skillEls=[...sb.children];
+}
+function tickSkillCooldownUI(){
+  if (!GAME._skillEls) return;
+  const sk=PLAYER.form.skill;
+  const cds=[ {cd:PLAYER.skillCdT,max:sk.cd*PLAYER.bonus.cdMul}, {cd:PLAYER.dashCdT,max:0.9}, {cd:0,max:1} ];
+  GAME._skillEls.forEach((el,i)=>{ const c=cds[i]; if(el._cd) el._cd.style.transform='scaleY('+clamp(c.cd/c.max,0,1)+')'; });
+}
+function updateBossUI(boss){
+  const w=$('bossWrap');
+  if (!boss || !boss.alive){ w.style.opacity=0; GAME.bossRef=null; return; }
+  GAME.bossRef=boss;
+  w.style.opacity=1;
+  $('bossName').textContent=boss.def.name;
+  const r=clamp(boss.hp/boss.maxHp*100,0,100);
+  $('bossFill').style.width=r+'%';
+  $('bossFillBack').style.width=r+'%';
+}
+function banner(text, sub, dur=1.0){
+  const b=$('banner'), s=$('subBanner');
+  b.textContent=text; s.textContent=sub||'';
+  b.style.opacity=text?1:0; s.style.opacity=sub?1:0;
+  clearTimeout(GAME._bannerT);
+  GAME._bannerT=setTimeout(()=>{ b.style.opacity=0; s.style.opacity=0; }, dur*1500);
+}
+function toast(html){
+  const t=$('toast'); const el=document.createElement('div');
+  el.className='toastItem'; el.innerHTML=html; t.appendChild(el);
+  setTimeout(()=>{ el.style.transition='opacity .4s'; el.style.opacity=0; setTimeout(()=>el.remove(),400); }, 2600);
+  while(t.children.length>4) t.firstChild.remove();
+}
+function showCombo(n){
+  const c=$('comboTag'); c.textContent=n+' COMBO'; c.style.opacity=1;
+  clearTimeout(GAME._comboT); GAME._comboT=setTimeout(()=>c.style.opacity=0, 900);
+}
+function hurtFlash(){ const v=$('hurtVig'); v.style.opacity=0.6; setTimeout(()=>v.style.opacity=0,200); }
+function setObjective(t){ $('objective').textContent=t; }
+function showFps(){ /* updated in loop */ }
+
+/* minimap */
+function updateMinimap(){
+  const cv=$('mmCanvas'); if(!cv) return; const c=cv.getContext('2d');
+  c.clearRect(0,0,128,128);
+  c.fillStyle='#0c1218'; c.beginPath(); c.arc(64,64,62,0,TAU); c.fill();
+  const scale=128/(WORLD_SIZE*1.0);
+  const cx=64-PLAYER.pos.x*scale, cy=64-PLAYER.pos.z*scale;
+  c.save(); c.beginPath(); c.arc(64,64,62,0,TAU); c.clip();
+  // enemies
+  GAME.enemies.forEach(e=>{ if(!e.alive)return; c.fillStyle=e.boss?'#ff6b6b':'#e07b7b';
+    c.beginPath(); c.arc(cx+e.pos.x*scale, cy+e.pos.z*scale, e.boss?4:2.4,0,TAU); c.fill(); });
+  // allies
+  GAME.allies.forEach(a=>{ if(!a.alive)return; c.fillStyle='#88c0ff'; c.beginPath(); c.arc(cx+a.pos.x*scale,cy+a.pos.z*scale,2.4,0,TAU); c.fill(); });
+  // pickups
+  GAME.pickups.forEach(p=>{ c.fillStyle='#e7c878'; c.fillRect(cx+p.x*scale-1.2,cy+p.z*scale-1.2,2.4,2.4); });
+  c.restore();
+  // player arrow
+  c.save(); c.translate(64,64); c.rotate(-Input.yaw);
+  c.fillStyle='#fff'; c.beginPath(); c.moveTo(0,-6); c.lineTo(4,5); c.lineTo(-4,5); c.closePath(); c.fill();
+  c.restore();
+}
+
+/* ============================ 18. パネル（スキル/インベントリ/メニュー） ============================ */
+let openPanel=null;
+function togglePanel(id){
+  const p=$(id);
+  if (p.classList.contains('show')){ closePanels(); return; }
+  closePanels();
+  if (id==='skillPanel') renderSkillTree();
+  if (id==='invPanel') renderInventory();
+  p.classList.add('show'); openPanel=id;
+  GAME.paused=true; Sound.sfx.ui();
+  if (document.pointerLockElement) document.exitPointerLock();
+}
+function closePanels(){
+  ['skillPanel','invPanel','menuPanel'].forEach(id=>$(id).classList.remove('show'));
+  openPanel=null;
+  if (GAME.state==='playing') GAME.paused=false;
+}
+function renderSkillTree(){
+  $('spPoints').textContent=PLAYER.sp;
+  const body=$('skillTreeBody'); body.innerHTML='';
+  SKILL_TREE.forEach(tier=>{
+    const td=document.createElement('div'); td.className='tier';
+    td.innerHTML=`<h3>${tier.tier}</h3>`;
+    const nodes=document.createElement('div'); nodes.className='skNodes';
+    tier.nodes.forEach(node=>{
+      const rank=PLAYER.skills[node.id]||0;
+      const maxed=rank>=node.max;
+      const can=PLAYER.sp>=node.cost && !maxed;
+      const el=document.createElement('div');
+      el.className='skNode'+(rank>0?' owned':'')+(!can&&!maxed?' cant':'');
+      el.innerHTML=`${rank>0?`<span class="own">${rank}/${node.max}</span>`:''}
+        <div class="sni">${node.icon}</div><div class="snn">${node.name}</div>
+        <div class="snd">${node.desc}</div><div class="snc">${maxed?'★ MAX':'コスト '+node.cost+' SP'}</div>`;
+      el.onclick=()=>{
+        if (PLAYER.sp>=node.cost && (PLAYER.skills[node.id]||0)<node.max){
+          PLAYER.sp-=node.cost; PLAYER.skills[node.id]=(PLAYER.skills[node.id]||0)+1;
+          PLAYER.recompute(); Sound.sfx.levelup(); renderSkillTree(); updateBarsUI();
+        }
+      };
+      nodes.appendChild(el);
+    });
+    td.appendChild(nodes); body.appendChild(td);
+  });
+}
+function renderInventory(){
+  $('goldTxt').textContent=PLAYER.gold;
+  // stats
+  const sb=$('statBody'); sb.innerHTML='';
+  const stats=[
+    ['形態', PLAYER.form.name], ['レベル', PLAYER.level],
+    ['最大HP', PLAYER.maxHp], ['攻撃力', Math.round(PLAYER.atkDamage)],
+    ['移動速度', PLAYER.speed.toFixed(1)], ['会心率', Math.round(PLAYER.bonus.crit*100)+'%'],
+    ['会心ダメ', Math.round(PLAYER.bonus.critDmg*100)+'%'], ['被ダメ軽減', Math.round((PLAYER.bonus.defMul-1)*100)+'%'],
+    ['記憶の断片', PLAYER.memoryShards], ['仲間', PLAYER.allies.length+'/'+PLAYER.bonus.maxAllies],
+  ];
+  stats.forEach(s=>{ const r=document.createElement('div'); r.className='statRow'; r.innerHTML=`<span>${s[0]}</span><b>${s[1]}</b>`; sb.appendChild(r); });
+  // equipped relics
+  const er=$('equipRow'); er.innerHTML='';
+  for (let i=0;i<3;i++){
+    const rid=PLAYER.relics[i];
+    const chip=document.createElement('div'); chip.className='equipChip'+(rid?' on':'');
+    chip.textContent = rid ? (RELICS.find(r=>r.id===rid).icon+' '+RELICS.find(r=>r.id===rid).name) : '空きスロット';
+    if (rid) chip.onclick=()=>{ PLAYER.relics.splice(i,1); PLAYER.recompute(); renderInventory(); };
+    er.appendChild(chip);
+  }
+  // items
+  const grid=$('invGrid'); grid.innerHTML='';
+  let any=false;
+  for (const id in PLAYER.inventory){
+    const n=PLAYER.inventory[id]; if(n<=0) continue; any=true;
+    if (id.startsWith('relic:')){
+      const r=RELICS.find(x=>x.id===id.slice(6)); if(!r)continue;
+      const el=document.createElement('div'); el.className='invItem';
+      el.innerHTML=`<div class="ii">${r.icon}</div><div class="inn">${r.name} ×${n}</div><div class="idd">${r.desc}</div><button>装備</button>`;
+      el.querySelector('button').onclick=()=>{
+        if (PLAYER.relics.length>=3){ toast('スロットが満杯'); return; }
+        PLAYER.relics.push(r.id); PLAYER.inventory[id]--; PLAYER.recompute(); renderInventory(); toast(r.name+'を装備');
+      };
+      grid.appendChild(el);
+    } else {
+      const c=CONSUMABLES[id]; if(!c)continue;
+      const el=document.createElement('div'); el.className='invItem';
+      el.innerHTML=`<div class="ii">${c.icon}</div><div class="inn">${c.name} ×${n}</div><div class="idd">${c.desc}</div><button>使う</button>`;
+      el.querySelector('button').onclick=()=>{ c.use(PLAYER); PLAYER.inventory[id]--; Sound.sfx.pickup(); renderInventory(); updateBarsUI(); };
+      grid.appendChild(el);
+    }
+  }
+  if (!any) grid.innerHTML='<div style="color:#7f9486;font-size:12px;">アイテムなし — 敵を倒して集めよう</div>';
+}
+function togglePause(){
+  if (openPanel){ closePanels(); return; }
+  if (GAME.state!=='playing') return;
+  if ($('menuPanel').classList.contains('show')){ closePanels(); }
+  else { $('menuPanel').classList.add('show'); openPanel='menuPanel'; GAME.paused=true; if(document.pointerLockElement)document.exitPointerLock(); }
+}
+
+/* ============================ 19. クエスト & 進行 ============================ */
+const Quest = {
+  cur:null,
+  set(q){ this.cur=q; this.render(); },
+  render(){
+    const log=$('questLog');
+    if (!this.cur){ log.style.display='none'; return; }
+    log.style.display='block';
+    log.innerHTML=`<div class="qt">📜 ${this.cur.title}</div>`+
+      this.cur.objectives.map(o=>`<div class="qi ${o.done?'done':''}">${o.done?'✓':'•'} ${o.text}</div>`).join('');
+  },
+  complete(idx){ if(this.cur&&this.cur.objectives[idx]){ this.cur.objectives[idx].done=true; this.render(); } },
+  allDone(){ return this.cur && this.cur.objectives.every(o=>o.done); }
+};
 </script>
 </body>
 </html>
