@@ -1694,10 +1694,12 @@ class Enemy{
     this.alertT=0; this.specialCd=rand(3,6);
     this.range = t.range||0;
 
-    // model
-    const fdef = FORMS[t.form] || FORMS.fox;
+    // model — resolve the visual form id (bosses reference an enemy-type via t.type)
+    this.formId = this.boss ? (ENEMY_TYPES[t.type] ? ENEMY_TYPES[t.type].form : 'fox') : t.form;
+    const fdef = FORMS[this.formId] || FORMS.fox;
+    this.modelScale = (fdef.scale)*(t.scale||1)*(this.boss?1:0.92);
     const col = this.boss ? new THREEJS.Color(fdef.color).offsetHSL(0,0.1,-0.05).getHex() : fdef.color;
-    this.parts = buildCreature(t.form, col, fdef.accent, (fdef.scale)*(t.scale||1)*(this.boss?1:0.92));
+    this.parts = buildCreature(this.formId, col, fdef.accent, this.modelScale);
     this.group = this.parts.group;
     if (this.boss){ this.group.traverse(o=>{ if(o.isMesh&&o.material){ o.material=o.material.clone(); o.material.emissive=new THREEJS.Color(0x440000); o.material.emissiveIntensity=0.4; } }); }
     GAME.scene.add(this.group);
@@ -1798,7 +1800,7 @@ class Enemy{
     // damp velocity (friction) on chase types
     this.vel.x*=0.9; this.vel.z*=0.9;
     // bar
-    this.bar.position.set(this.pos.x, this.pos.y + 2.4*(this.boss?1.6:1)*(FORMS[this.def.form].scale*(this.def.scale||1)), this.pos.z);
+    this.bar.position.set(this.pos.x, this.pos.y + 2.0 + this.modelScale*1.6, this.pos.z);
     this.drawBar();
   }
 
@@ -2315,6 +2317,355 @@ const Quest = {
   complete(idx){ if(this.cur&&this.cur.objectives[idx]){ this.cur.objectives[idx].done=true; this.render(); } },
   allDone(){ return this.cur && this.cur.objectives.every(o=>o.done); }
 };
+
+/* ============================ 20. ステージ管理 ============================ */
+function clearWorldEntities(){
+  GAME.enemies.forEach(e=>{ GAME.scene.remove(e.group); GAME.scene.remove(e.bar); });
+  GAME.projectiles.forEach(p=>GAME.scene.remove(p.mesh));
+  GAME.pickups.forEach(p=>GAME.scene.remove(p.mesh));
+  GAME.enemies=[]; GAME.projectiles=[]; GAME.pickups=[];
+  updateBossUI(null);
+}
+
+function loadStage(idx){
+  GAME.stageIndex=idx;
+  const stage=STAGES[idx];
+  clearWorldEntities();
+  GAME.dayTime = stage.dayStart;
+  // visuals
+  GAME.scene.fog.color.set(stage.fog);
+  GAME.scene.background = new THREEJS.Color(stage.sky);
+  buildGround(stage);
+  buildProps(stage);
+  placeShrines(stage);
+  // reset player pos
+  if (PLAYER){ PLAYER.pos.set(0,0,0); PLAYER.height=0; PLAYER.vel.set(0,0,0); PLAYER.hp=PLAYER.maxHp; }
+  // spawn ambient enemies in packs
+  GAME.bossSpawned=false;
+  spawnStagePopulation(stage);
+  // stage intro + quest
+  banner(stage.name, stage.sub, 1.4);
+  setObjective(stage.mechanic+' — '+(STAGES[idx].boss==='system'?'真のボスを討て':'ボスを討伐せよ'));
+  setupStageQuest(stage);
+  setTimeout(()=>{ if(GAME.state==='playing') toast(stage.intro); }, 800);
+}
+
+function placeShrines(stage){
+  for (let i=0;i<3;i++){
+    const a=rand(TAU), r=rand(40,WORLD_SIZE*0.42);
+    const x=Math.cos(a)*r, z=Math.sin(a)*r;
+    const g=new THREEJS.Group();
+    const base=new THREEJS.Mesh(new THREEJS.CylinderGeometry(1.2,1.5,0.5,8), makeStdMat(0x8a8478,{flat:true}));
+    const cry=new THREEJS.Mesh(new THREEJS.OctahedronGeometry(0.8,0), makeStdMat(0x6ad0ff,{emissive:0x2a90c0,ei:0.8,flat:false}));
+    cry.position.y=1.4; base.position.y=0.25; g.add(base,cry);
+    g.position.set(x, terrainHeight(x,z), z);
+    g.traverse(o=>{if(o.isMesh)o.castShadow=true;});
+    GAME.scene.add(g);
+    GAME.props.push({ mesh:g, solid:true, r:1.5, x, z, shrine:true, used:false });
+  }
+}
+
+function spawnStagePopulation(stage){
+  const lv=stage.spawnLv;
+  const minionTypes = {
+    0:['rat','rat','fox'], 1:['fox','snakeMinion','rat'], 2:['snakeMinion','hawk','fox'],
+    3:['wolfMinion','hawk','fox'], 4:['hunter','wolfMinion','hawk'], 5:['drone','hunter','wolfMinion'],
+  }[stage.id];
+  for (let pki=0; pki<stage.packs; pki++){
+    const a=rand(TAU), r=rand(45, WORLD_SIZE*0.42);
+    const cx=Math.cos(a)*r, cz=Math.sin(a)*r;
+    const count=randInt(2,4);
+    for (let i=0;i<count;i++){
+      spawnEnemy(pick(minionTypes), cx+rand(-6,6), cz+rand(-6,6), {level:lv});
+    }
+  }
+}
+
+function spawnBoss(stage){
+  if (GAME.bossSpawned) return;
+  GAME.bossSpawned=true;
+  const a=rand(TAU), r=40;
+  const boss=spawnEnemy(stage.boss, Math.cos(a)*r, Math.sin(a)*r, {boss:true, level:stage.spawnLv});
+  boss.aggro=true;
+  GAME.target=boss;
+  document.getElementById('reticle').classList.add('locked');
+  banner('⚠ ボス出現', BOSSES[stage.boss].name, 1.4);
+  toast('弱点: '+BOSSES[stage.boss].weakness);
+  Sound.sfx.bossroar();
+  updateBossUI(boss);
+  setObjective('ボス討伐: '+BOSSES[stage.boss].name);
+}
+
+function setupStageQuest(stage){
+  const minionGoal = 6 + stage.id*2;
+  GAME._stageMinionKills=0;
+  Quest.set({
+    title: stage.name,
+    objectives:[
+      { text:`敵を ${minionGoal} 体倒す（ボスを誘き出す）`, done:false },
+      { text:`ボス「${BOSSES[stage.boss].name}」を討伐`, done:false },
+    ],
+    minionGoal,
+  });
+}
+
+function onEnemyKilled(e){
+  // loot drops
+  const goldChance = 0.6 + PLAYER.bonus.gold*0.1;
+  if (Math.random()<goldChance) spawnPickup(e.pos.x+rand(-1,1), e.pos.z+rand(-1,1), 'gold');
+  if (Math.random()<0.28) spawnPickup(e.pos.x+rand(-1,1), e.pos.z+rand(-1,1), pick(['berry','meat','herb','feather']));
+  if (Math.random()<(e.boss?1:0.06)){ const r=spawnPickup(e.pos.x,e.pos.z,'relic'); r.relicId=pick(RELICS).id; }
+  if (e.boss && Math.random()<0.9) spawnPickup(e.pos.x+rand(-2,2),e.pos.z+rand(-2,2),'shard');
+
+  // quest progress
+  if (!e.boss){
+    GAME._stageMinionKills=(GAME._stageMinionKills||0)+1;
+    if (Quest.cur && GAME._stageMinionKills>=Quest.cur.minionGoal && !Quest.cur.objectives[0].done){
+      Quest.complete(0);
+      banner('','ボスが姿を現す…',0.9);
+      spawnBoss(STAGES[GAME.stageIndex]);
+    }
+  } else {
+    // boss defeated
+    Quest.complete(1);
+    onBossDefeated(e);
+  }
+}
+
+function onBossDefeated(boss){
+  const stage=STAGES[GAME.stageIndex];
+  GAME.target=null; updateBossUI(null);
+  Sound.sfx.win();
+  GAME.shake=Math.max(GAME.shake,1.0);
+  spawnLevelUpFX(boss.pos);
+  // unlock new form
+  if (stage.unlock && !PLAYER.unlocked[stage.unlock]){
+    PLAYER.unlocked[stage.unlock]=true;
+    updateFormUI();
+    setTimeout(()=>{ banner('新形態解放: '+FORMS[stage.unlock].emoji, FORMS[stage.unlock].name+' に変身可能になった!', 1.6); }, 1200);
+  }
+  // gain an ally after wolf stage
+  if (stage.id===3){ setTimeout(()=>addAlly(),2000); }
+  // advance
+  setTimeout(()=>{
+    if (GAME.state!=='playing') return;
+    if (GAME.stageIndex < STAGES.length-1){
+      banner('STAGE CLEAR', stage.name+' 制覇', 1.6);
+      setTimeout(()=>{ if(GAME.state==='playing') loadStage(GAME.stageIndex+1); }, 2600);
+    } else {
+      // game complete
+      gameComplete();
+    }
+  }, 2800);
+  autoSave();
+}
+
+function gameComplete(){
+  GAME.state='ended';
+  $('endScreen').style.display='flex';
+  $('endTitle').textContent='革命の果てに';
+  $('endText').innerHTML='あなたはネズミから始まり、食物連鎖を逆走し、文明そのものと対峙した。<br><br>'+
+    `討伐数 <b>${GAME.killCount}</b> ・ 到達レベル <b>Lv.${PLAYER.level}</b> ・ 記憶の断片 <b>${PLAYER.memoryShards}</b><br><br>`+
+    '"You were prey. Now you are everything. But everything has something to lose."';
+  Sound.sfx.win();
+}
+
+function onPlayerDeath(){
+  GAME.state='dead';
+  Sound.sfx.death();
+  $('deathScreen').style.display='flex';
+  if (document.pointerLockElement) document.exitPointerLock();
+}
+
+/* ============================ 21. 昼夜サイクル ============================ */
+function updateDayNight(dt){
+  GAME.dayTime = (GAME.dayTime + dt*0.006) % 1;   // full day ~ 2.8 min
+  const t=GAME.dayTime;
+  // sun angle
+  const sunAngle = (t-0.25)*TAU; // noon at .5
+  const sx=Math.cos(sunAngle), sy=Math.sin(sunAngle);
+  GAME.sun.position.set(sx*80, Math.max(2,sy*100), 40);
+  GAME.sun.target.position.copy(PLAYER?PLAYER.pos:V3(0,0,0));
+  // intensity & color based on height
+  const daylight=clamp(sy,0,1);
+  GAME.sun.intensity = 0.2 + daylight*1.5;
+  GAME.moon.intensity = clamp(0.4-daylight*0.8,0,0.4);
+  GAME.hemi.intensity = 0.25 + daylight*0.6;
+  // color grading: warm dawn/dusk, cool night
+  const dawnDusk = clamp(1-Math.abs(t-0.5)*4,0,1)*(t>0.2&&t<0.8?1:0); // peak near horizon
+  const sunCol=new THREEJS.Color().setHSL(0.09, 0.4, 0.5+daylight*0.3);
+  if (t<0.25||t>0.78) sunCol.setHSL(0.07,0.7,0.45); // sunrise/sunset orange
+  GAME.sun.color.copy(sunCol);
+  // sky tint
+  const stage=STAGES[GAME.stageIndex];
+  const baseSky=new THREEJS.Color(stage.sky);
+  const nightSky=new THREEJS.Color(0x0a0e18);
+  GAME.scene.background = baseSky.clone().lerp(nightSky, 1-daylight);
+  GAME.scene.fog.color.copy(new THREEJS.Color(stage.fog).lerp(nightSky, (1-daylight)*0.7));
+  // exposure
+  GAME.renderer.toneMappingExposure = 0.7 + daylight*0.45;
+}
+
+/* ============================ 22. セーブ/ロード ============================ */
+function autoSave(){
+  if (!PLAYER) return;
+  try{
+    const data={
+      v:2, stage:GAME.stageIndex, level:PLAYER.level, xp:PLAYER.xp, xpNext:PLAYER.xpNext, sp:PLAYER.sp,
+      gold:PLAYER.gold, skills:PLAYER.skills, unlocked:PLAYER.unlocked, relics:PLAYER.relics,
+      inventory:PLAYER.inventory, shards:PLAYER.memoryShards, kills:GAME.killCount, form:PLAYER.form.id,
+    };
+    localStorage.setItem('inverseHunterSave', JSON.stringify(data));
+  }catch(e){}
+}
+function hasSave(){ try{ return !!localStorage.getItem('inverseHunterSave'); }catch(e){ return false; } }
+function loadSave(){
+  try{
+    const d=JSON.parse(localStorage.getItem('inverseHunterSave')); if(!d) return false;
+    startGame(()=>{
+      PLAYER.level=d.level; PLAYER.xp=d.xp; PLAYER.xpNext=d.xpNext; PLAYER.sp=d.sp;
+      PLAYER.gold=d.gold; PLAYER.skills=d.skills||{}; PLAYER.unlocked=Object.assign(PLAYER.unlocked,d.unlocked||{});
+      PLAYER.relics=d.relics||[]; PLAYER.inventory=d.inventory||{}; PLAYER.memoryShards=d.shards||0;
+      GAME.killCount=d.kills||0;
+      PLAYER.recompute(); PLAYER.hp=PLAYER.maxHp;
+      if (d.form && PLAYER.unlocked[d.form]) PLAYER.transform(d.form,true);
+      loadStage(d.stage||0);
+      updateFormUI(); updateBarsUI();
+    });
+    return true;
+  }catch(e){ return false; }
+}
+
+/* ============================ 23. メインループ ============================ */
+let lastFps=0, fpsAcc=0, fpsFrames=0;
+function loop(){
+  requestAnimationFrame(loop);
+  let dt = Math.min(0.05, GAME.clock.getDelta());
+  GAME.frame++;
+  // fps
+  fpsAcc+=dt; fpsFrames++;
+  if (fpsAcc>=0.5){ lastFps=Math.round(fpsFrames/fpsAcc); fpsFrames=0; fpsAcc=0; $('fps').textContent=lastFps+' FPS'; }
+
+  if (GAME.state==='playing' && !GAME.paused){
+    // hitstop / slowmo
+    if (GAME.slowmoT>0){ GAME.slowmoT-=dt; dt*=GAME.slowmo; } else GAME.slowmo=1;
+    GAME.time += dt;
+    updateDayNight(dt);
+    PLAYER.update(dt);
+    GAME.enemies.forEach(e=>e.update(dt));
+    GAME.allies.forEach(a=>a.update(dt));
+    updateProjectiles(dt);
+    updatePickups(dt);
+    Cam.update(dt);
+    // cleanup dead enemies
+    GAME.enemies = GAME.enemies.filter(e=>e.alive || e.boss===false ? true : true);
+    GAME.enemies = GAME.enemies.filter(e=>e.alive);
+    GAME.allies = GAME.allies.filter(a=>a.alive);
+    // lock target validity
+    if (GAME.target && !GAME.target.alive) GAME.target=null;
+    updateLockUI();
+    // periodic respawn to keep world alive (ecosystem) until boss
+    maybeRepopulate(dt);
+    tickSkillCooldownUI();
+    if (GAME.frame%6===0) updateMinimap();
+    // water shimmer
+    if (GAME.waterMesh){ GAME.waterMesh.position.y += Math.sin(GAME.time*1.5)*0.003; }
+  } else {
+    // still update camera gently on menus
+    if (GAME.state==='playing') Cam.update(dt*0.2);
+  }
+  // always update fx layers (so particles fade even paused minimal)
+  updateParticles(dt);
+  updateFloaters(dt);
+  updateFloatTexts(dt);
+
+  GAME.renderer.render(GAME.scene, GAME.camera);
+}
+
+let repopT=0;
+function maybeRepopulate(dt){
+  if (GAME.bossSpawned) return;
+  repopT-=dt;
+  const alive=GAME.enemies.filter(e=>e.alive&&!e.boss).length;
+  if (repopT<=0 && alive<8){
+    repopT=4;
+    const stage=STAGES[GAME.stageIndex];
+    const types={0:['rat','fox'],1:['fox','snakeMinion'],2:['snakeMinion','hawk'],3:['wolfMinion','hawk'],4:['hunter','wolfMinion'],5:['drone','hunter']}[stage.id];
+    const a=rand(TAU), r=rand(50,WORLD_SIZE*0.42);
+    spawnEnemy(pick(types), Math.cos(a)*r, Math.sin(a)*r, {level:stage.spawnLv});
+  }
+}
+
+/* ============================ 24. ゲーム開始/初期化 ============================ */
+function startGame(afterInit){
+  Sound.resume();
+  $('title').style.display='none';
+  $('hud').classList.remove('hidden');
+  GAME.state='playing'; GAME.paused=false;
+  GAME.killCount=0;
+  if (!PLAYER){ PLAYER=new Player(); }
+  updateFormUI(); updateBarsUI(); updateSkillBarUI();
+  if (afterInit){ afterInit(); }
+  else { loadStage(0); }
+  banner('INVERSE HUNTER','', 0.6);
+}
+
+function bootstrap(){
+  initEngine();
+  setupInput();
+  // pre-create player at title for nicer cam? keep simple.
+  // loader sim
+  let prog=0;
+  const tips=['草むらに隠れて本能を回復しよう','ロックオン(Q)で安定した戦闘ができる',
+    'W=後退・D=左 ※リクエスト通り反転しています','形態を切り替えて弱点を突け',
+    '遺物を装備して強くなろう','スキルツリー(T)で能力を解放'];
+  $('loadTip').textContent=pick(tips);
+  const li=setInterval(()=>{
+    prog+=rand(8,22); if(prog>=100){prog=100;clearInterval(li);
+      setTimeout(()=>{ $('loader').style.display='none'; }, 250);
+    }
+    $('loadFill').style.width=prog+'%';
+  }, 120);
+  // render title scene background (simple)
+  GAME.scene.background=new THREEJS.Color(0x0a121a);
+  loop();
+
+  // wire buttons
+  $('startBtn').onclick=()=>{ try{localStorage.removeItem('inverseHunterSave');}catch(e){} startGame(); };
+  $('continueBtn').onclick=()=>{ if(!loadSave()) startGame(); };
+  if (!hasSave()) $('continueBtn').style.display='none';
+  $('reviveBtn').onclick=()=>{
+    $('deathScreen').style.display='none';
+    PLAYER.hp=PLAYER.maxHp; PLAYER.stamina=PLAYER.maxStamina; PLAYER.instinct=PLAYER.maxInstinct;
+    PLAYER.pos.set(0,0,0); PLAYER.height=0; PLAYER.vel.set(0,0,0);
+    GAME.state='playing'; GAME.paused=false;
+    // weaken nearby enemies a touch
+    GAME.enemies.forEach(e=>{ if(!e.boss){ e.aggro=false; e.pos.x+=rand(-10,10); e.pos.z+=rand(-10,10);} });
+    banner('復活','チェックポイントから',0.8);
+  };
+  $('endBtn').onclick=()=>{ location.reload(); };
+  $('quitBtn').onclick=()=>{ autoSave(); location.reload(); };
+  $('resumeBtn').onclick=()=>{ closePanels(); };
+  $('saveBtn').onclick=()=>{ autoSave(); toast('💾 セーブしました'); };
+  $('btnSkillPanel').onclick=()=>togglePanel('skillPanel');
+  $('btnInvPanel').onclick=()=>togglePanel('invPanel');
+  $('btnMenu').onclick=()=>togglePause();
+  document.querySelectorAll('[data-close]').forEach(el=>el.onclick=()=>closePanels());
+  $('volSlider').oninput=e=>Sound.setVol(e.target.value/100);
+  $('invertY').onchange=e=>GAME.invertY=e.target.checked;
+
+  // orientation note for mobile portrait
+  function checkOrient(){
+    if (isTouch && innerHeight>innerWidth){ $('rotateNote').style.display='flex'; }
+    else $('rotateNote').style.display='none';
+  }
+  addEventListener('resize', checkOrient); checkOrient();
+
+  // autosave periodically
+  setInterval(()=>{ if(GAME.state==='playing') autoSave(); }, 20000);
+}
+
+window.addEventListener('load', bootstrap);
 </script>
 </body>
 </html>
