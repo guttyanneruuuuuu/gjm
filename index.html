@@ -799,6 +799,648 @@ function buildGrass(stage){
   GAME.scene.add(inst);
   GAME.grassMesh = inst;
 }
+
+/* ============================ 6. クリーチャーモデル生成 ============================ */
+// 低ポリだが躍動感のある四足/二足/鳥/蛇モデルを手続き生成。
+// 戻り値: { group, parts:{...}, type } — parts は脚・頭・尾などアニメ用参照。
+function makeStdMat(color, opts={}){
+  return new THREEJS.MeshStandardMaterial({ color, roughness:opts.rough??0.8, metalness:opts.metal??0.05,
+    flatShading:opts.flat??true, emissive:opts.emissive??0x000000, emissiveIntensity:opts.ei??1 });
+}
+
+function buildCreature(formId, color, accent, scaleMul=1){
+  const g = new THREEJS.Group();
+  const parts = { legs:[], group:g };
+  const mat = makeStdMat(color);
+  const matA = makeStdMat(accent, {rough:0.7});
+  const eyeMat = makeStdMat(0x111111,{flat:false,rough:0.3});
+  const addLeg = (x,z,len,rad)=>{
+    const leg = new THREEJS.Group();
+    const seg = new THREEJS.Mesh(new THREEJS.CapsuleGeometry(rad, len, 3, 6), mat);
+    seg.position.y = -len/2; seg.castShadow=true;
+    leg.add(seg); leg.position.set(x, 0, z);
+    parts.legs.push(leg); g.add(leg);
+    return leg;
+  };
+
+  if (formId==='snake'){
+    // long segmented body
+    const body = new THREEJS.Group();
+    const segs=[];
+    let prevY=0.4;
+    for(let i=0;i<10;i++){
+      const r = 0.42 - i*0.03;
+      const s = new THREEJS.Mesh(new THREEJS.SphereGeometry(Math.max(0.12,r),8,6), i%2?matA:mat);
+      s.position.set(0,0.4,-i*0.5); s.castShadow=true;
+      body.add(s); segs.push(s);
+    }
+    const head = new THREEJS.Mesh(new THREEJS.ConeGeometry(0.4,0.9,8), matA);
+    head.rotation.x=Math.PI/2; head.position.set(0,0.45,0.5); head.castShadow=true;
+    body.add(head);
+    const e1=new THREEJS.Mesh(new THREEJS.SphereGeometry(0.07,6,6),eyeMat); e1.position.set(0.15,0.55,0.7);
+    const e2=e1.clone(); e2.position.x=-0.15; body.add(e1,e2);
+    g.add(body);
+    parts.segs=segs; parts.head=head; parts.body=body; parts.kind='snake';
+  } else if (formId==='eagle'){
+    const body = new THREEJS.Mesh(new THREEJS.SphereGeometry(0.6,10,8), mat);
+    body.scale.set(1,0.9,1.4); body.position.y=0.9; body.castShadow=true; g.add(body);
+    const head=new THREEJS.Mesh(new THREEJS.SphereGeometry(0.35,8,8),mat); head.position.set(0,1.3,0.6); head.castShadow=true; g.add(head);
+    const beak=new THREEJS.Mesh(new THREEJS.ConeGeometry(0.14,0.4,6),matA); beak.rotation.x=Math.PI/2; beak.position.set(0,1.28,0.95); g.add(beak);
+    const e1=new THREEJS.Mesh(new THREEJS.SphereGeometry(0.06,6,6),eyeMat); e1.position.set(0.16,1.38,0.78);
+    const e2=e1.clone(); e2.position.x=-0.16; g.add(e1,e2);
+    // wings
+    const wingGeo=new THREEJS.BoxGeometry(2.4,0.08,1.1);
+    const wL=new THREEJS.Mesh(wingGeo,matA); wL.position.set(-1.3,0.95,0); wL.castShadow=true;
+    const wR=wL.clone(); wR.position.x=1.3;
+    g.add(wL,wR);
+    // tail
+    const tail=new THREEJS.Mesh(new THREEJS.BoxGeometry(0.8,0.06,1.0),matA); tail.position.set(0,0.85,-0.9); g.add(tail);
+    parts.wings=[wL,wR]; parts.head=head; parts.tail=tail; parts.body=body; parts.kind='bird';
+  } else if (formId==='human'){
+    const torso=new THREEJS.Mesh(new THREEJS.CapsuleGeometry(0.4,0.9,4,8),mat); torso.position.y=1.4; torso.castShadow=true; g.add(torso);
+    const head=new THREEJS.Mesh(new THREEJS.SphereGeometry(0.32,10,10),matA); head.position.y=2.15; head.castShadow=true; g.add(head);
+    // arms
+    const armGeo=new THREEJS.CapsuleGeometry(0.13,0.7,3,6);
+    const aL=new THREEJS.Group(); const armL=new THREEJS.Mesh(armGeo,mat); armL.position.y=-0.4; aL.add(armL); aL.position.set(-0.5,1.7,0); g.add(aL);
+    const aR=new THREEJS.Group(); const armR=new THREEJS.Mesh(armGeo,mat); armR.position.y=-0.4; aR.add(armR); aR.position.set(0.5,1.7,0); g.add(aR);
+    // legs
+    addLeg(-0.22,0,0.9,0.16); addLeg(0.22,0,0.9,0.16);
+    parts.legs[0].position.y=0.9; parts.legs[1].position.y=0.9;
+    parts.arms=[aL,aR]; parts.head=head; parts.torso=torso; parts.kind='biped';
+  } else {
+    // quadruped: mouse/fox/wolf/generic
+    const bodyLen = formId==='mouse'?0.9 : (formId==='wolf'?1.7:1.3);
+    const bodyR = formId==='mouse'?0.34 : (formId==='wolf'?0.5:0.42);
+    const body=new THREEJS.Mesh(new THREEJS.CapsuleGeometry(bodyR,bodyLen,5,8),mat);
+    body.rotation.z=Math.PI/2; body.position.y=bodyR+0.5; body.castShadow=true; g.add(body);
+    const head=new THREEJS.Group();
+    const headM=new THREEJS.Mesh(new THREEJS.SphereGeometry(bodyR*0.95,10,8),matA); head.add(headM);
+    // snout
+    const snout=new THREEJS.Mesh(new THREEJS.ConeGeometry(bodyR*0.5,bodyR*1.1,7),matA); snout.rotation.x=Math.PI/2; snout.position.z=bodyR*0.9; head.add(snout);
+    // ears
+    const earG=new THREEJS.ConeGeometry(bodyR*0.4,bodyR*0.9,5);
+    const earL=new THREEJS.Mesh(earG,matA); earL.position.set(-bodyR*0.5,bodyR*0.7,-bodyR*0.2);
+    const earR=earL.clone(); earR.position.x=bodyR*0.5; head.add(earL,earR);
+    const e1=new THREEJS.Mesh(new THREEJS.SphereGeometry(bodyR*0.16,6,6),eyeMat); e1.position.set(bodyR*0.35,bodyR*0.2,bodyR*0.55);
+    const e2=e1.clone(); e2.position.x=-bodyR*0.35; head.add(e1,e2);
+    head.position.set(0, bodyR+0.55, bodyLen*0.55+0.1);
+    g.add(head);
+    // tail
+    const tail=new THREEJS.Mesh(new THREEJS.ConeGeometry(bodyR*0.5, bodyLen*0.9, 7), formId==='fox'?matA:mat);
+    tail.rotation.x=-Math.PI/2.4; tail.position.set(0,bodyR+0.65,-bodyLen*0.55-0.1); tail.castShadow=true; g.add(tail);
+    // 4 legs
+    const lz=bodyLen*0.35, lx=bodyR*0.8, ll=bodyR+0.45;
+    const fl=addLeg(-lx,lz,ll,bodyR*0.28); fl.position.y=ll;
+    const fr=addLeg(lx,lz,ll,bodyR*0.28); fr.position.y=ll;
+    const bl=addLeg(-lx,-lz,ll,bodyR*0.28); bl.position.y=ll;
+    const br=addLeg(lx,-lz,ll,bodyR*0.28); br.position.y=ll;
+    parts.head=head; parts.tail=tail; parts.body=body; parts.kind='quad';
+  }
+  g.scale.setScalar(scaleMul);
+  g.traverse(o=>{ if(o.isMesh){ o.castShadow=true; } });
+  return parts;
+}
+
+// animate creature parts based on movement/state. t=time, speed=0..1 walk, action=optional
+function animateCreature(parts, t, moveSpeed, grounded, flying){
+  if (!parts) return;
+  const k = parts.kind;
+  const sw = Math.sin(t*10) * clamp(moveSpeed,0,1);
+  if (k==='quad' || k==='biped'){
+    parts.legs.forEach((leg,i)=>{
+      const ph = (i%2===0)? sw : -sw;
+      leg.rotation.x = ph * 0.9;
+    });
+    if (parts.tail) parts.tail.rotation.z = Math.sin(t*6)*0.2;
+    if (parts.head) parts.head.rotation.z = Math.sin(t*5)*0.05*moveSpeed;
+    if (parts.arms){ parts.arms[0].rotation.x=sw*0.8; parts.arms[1].rotation.x=-sw*0.8; }
+    if (parts.body) parts.body.position.y += 0; // base set
+    parts.group.position.y = grounded ? Math.abs(Math.sin(t*10))*0.06*moveSpeed : parts.group.position.y;
+  } else if (k==='bird'){
+    const flap = flying ? Math.sin(t*14) : Math.sin(t*6)*0.3;
+    if(parts.wings){ parts.wings[0].rotation.z = flap*0.7; parts.wings[1].rotation.z = -flap*0.7; }
+    if(parts.tail) parts.tail.rotation.x = Math.sin(t*8)*0.15;
+  } else if (k==='snake'){
+    if(parts.segs) parts.segs.forEach((s,i)=>{ s.position.x = Math.sin(t*4 - i*0.6)*0.35*(1+moveSpeed); });
+    if(parts.head) parts.head.position.x = Math.sin(t*4 + 0.6)*0.35;
+  }
+}
+
+/* ============================ 7. 入力システム ============================ */
+const Input = {
+  keys:{}, mouseDown:false, rmbDown:false,
+  yaw:0, pitch:0.35, mouseLook:false,
+  moveX:0, moveZ:0,        // analog from joystick (-1..1)
+  // edge-triggered actions consumed by player
+  pressed:{},
+  press(name){ this.pressed[name]=true; },
+  consume(name){ if(this.pressed[name]){ this.pressed[name]=false; return true; } return false; },
+};
+const isTouch = ('ontouchstart' in window) || navigator.maxTouchPoints>0;
+
+function setupInput(){
+  // keyboard
+  addEventListener('keydown', e=>{
+    const k = e.key.toLowerCase();
+    Input.keys[k]=true;
+    if (['arrowup','arrowdown','arrowleft','arrowright',' '].includes(k)) e.preventDefault();
+    if (GAME.state!=='playing') {
+      return;
+    }
+    if (k==='j') Input.press('attack');
+    if (k==='k') Input.press('skill');
+    if (k===' ') Input.press('jump');
+    if (k==='shift') Input.press('dash');
+    if (k==='q') Input.press('lock');
+    if (k==='e') Input.press('instinct');
+    if (k==='f') Input.press('interact');
+    if (FORM_ORDER.some(f=>FORMS[f].key===k)) Input.press('form'+k);
+    if (k==='t') togglePanel('skillPanel');
+    if (k==='i') togglePanel('invPanel');
+    if (k==='escape') togglePause();
+  });
+  addEventListener('keyup', e=>{ Input.keys[e.key.toLowerCase()]=false; });
+
+  const dom = GAME.renderer.domElement;
+  // pointer lock for mouse look on PC
+  dom.addEventListener('click', ()=>{
+    if (GAME.state==='playing' && !isTouch && document.pointerLockElement!==dom){
+      dom.requestPointerLock();
+    }
+  });
+  document.addEventListener('pointerlockchange', ()=>{
+    Input.mouseLook = document.pointerLockElement===dom;
+    document.getElementById('reticle').classList.toggle('show', Input.mouseLook && GAME.state==='playing');
+  });
+  addEventListener('mousemove', e=>{
+    if (Input.mouseLook){
+      Input.yaw   -= e.movementX * 0.0024;
+      Input.pitch += (GAME.invertY?-1:1) * (-e.movementY * 0.0022);
+      Input.pitch = clamp(Input.pitch, -0.5, 1.2);
+    }
+  });
+  addEventListener('mousedown', e=>{
+    if (GAME.state!=='playing') return;
+    if (e.button===0){ Input.mouseDown=true; Input.press('attack'); }
+    if (e.button===2){ Input.rmbDown=true; Input.press('skill'); }
+  });
+  addEventListener('mouseup', e=>{ if(e.button===0) Input.mouseDown=false; if(e.button===2) Input.rmbDown=false; });
+  addEventListener('contextmenu', e=>{ if(GAME.state==='playing') e.preventDefault(); });
+  // scroll wheel = switch forms
+  addEventListener('wheel', e=>{
+    if (GAME.state!=='playing'||!PLAYER) return;
+    const unlocked = FORM_ORDER.filter(f=>PLAYER.unlocked[f]);
+    let idx = unlocked.indexOf(PLAYER.form.id);
+    idx = (idx + (e.deltaY>0?1:-1) + unlocked.length)%unlocked.length;
+    PLAYER.transform(unlocked[idx]);
+  }, {passive:true});
+
+  if (isTouch) setupTouch();
+}
+
+function setupTouch(){
+  document.getElementById('mobile').style.display='block';
+  // joystick
+  const joy = document.getElementById('joy'), knob = document.getElementById('joyKnob');
+  let joyId=null, jcx=0, jcy=0;
+  const jr = 60;
+  joy.addEventListener('touchstart', e=>{
+    const t=e.changedTouches[0]; joyId=t.identifier;
+    const r=joy.getBoundingClientRect(); jcx=r.left+r.width/2; jcy=r.top+r.height/2;
+    e.preventDefault();
+  },{passive:false});
+  addEventListener('touchmove', e=>{
+    for(const t of e.changedTouches){
+      if(t.identifier===joyId){
+        let dx=t.clientX-jcx, dy=t.clientY-jcy;
+        const d=Math.hypot(dx,dy); if(d>jr){ dx*=jr/d; dy*=jr/d; }
+        knob.style.transform=`translate(${dx}px,${dy}px)`;
+        Input.moveX = dx/jr; Input.moveZ = dy/jr;
+      }
+    }
+  },{passive:false});
+  addEventListener('touchend', e=>{
+    for(const t of e.changedTouches){
+      if(t.identifier===joyId){ joyId=null; knob.style.transform='translate(0,0)'; Input.moveX=0; Input.moveZ=0; }
+    }
+  });
+  // aim pad (right side drag)
+  const pad=document.getElementById('aimPad'); let padId=null, px=0,py=0;
+  pad.addEventListener('touchstart', e=>{ const t=e.changedTouches[0]; padId=t.identifier; px=t.clientX; py=t.clientY; e.preventDefault();},{passive:false});
+  addEventListener('touchmove', e=>{
+    for(const t of e.changedTouches){
+      if(t.identifier===padId){
+        Input.yaw -= (t.clientX-px)*0.005;
+        Input.pitch += (GAME.invertY?-1:1)*(-(t.clientY-py)*0.005);
+        Input.pitch = clamp(Input.pitch,-0.4,1.1);
+        px=t.clientX; py=t.clientY;
+      }
+    }
+  },{passive:false});
+  addEventListener('touchend', e=>{ for(const t of e.changedTouches) if(t.identifier===padId) padId=null; });
+  // buttons
+  const btn=(id,act,hold)=>{
+    const el=document.getElementById(id); if(!el) return;
+    el.addEventListener('touchstart', e=>{ e.preventDefault(); Input.press(act); if(hold) Input[hold]=true; },{passive:false});
+    if(hold) el.addEventListener('touchend', e=>{ Input[hold]=false; });
+  };
+  btn('btnA','attack','mouseDown'); btn('btnB','skill'); btn('btnJump','jump');
+  btn('btnDash','dash'); btn('btnLock','lock'); btn('btnY','instinct');
+}
+
+/* ============================ 8. プレイヤー ============================ */
+let PLAYER = null;
+class Player{
+  constructor(){
+    this.group = new THREEJS.Group();
+    GAME.scene.add(this.group);
+    this.pos = V3(0, 0, 0);
+    this.vel = V3(0,0,0);
+    this.facing = 0;           // yaw of model
+    this.grounded = true;
+    this.height = 0;           // height above terrain
+    this.modelCache = {};
+    this.parts = null;
+
+    // RPG progression
+    this.level = 1;
+    this.xp = 0;
+    this.xpNext = 100;
+    this.sp = 0;               // skill points
+    this.gold = 0;
+    this.skills = {};          // id -> rank
+    this.unlocked = { mouse:true, fox:false, snake:false, eagle:false, wolf:false, human:false };
+    this.relics = [];          // equipped relic ids (max 3)
+    this.inventory = {};       // consumable counts
+    this.allies = [];
+    this.buffs = {};
+    this.memoryShards = 0;
+
+    // bonus aggregate (recomputed)
+    this.bonus = {};
+    this.dashCharges = 1; this.dashCdT=0; this.iframeT=0;
+    this.jumpCount=0;
+    this.atkCdT=0; this.skillCdT=0;
+    this.combo=0; this.comboT=0;
+    this.attackAnimT=0;
+    this.flyVel=0;
+    this.invuln=0;
+
+    this.transform('mouse', true);
+    this.recompute();
+    this.hp = this.maxHp; this.stamina=this.maxStamina; this.instinct=this.maxInstinct;
+  }
+
+  recompute(){
+    // reset bonus
+    const b = this.bonus = {
+      hpMul:1, stMul:1, inRegen:1, stRegen:1, dmgMul:1, defMul:1, spdMul:1,
+      cdMul:1, crit:0.08, critDmg:1.6, lifesteal:0, comboMul:1, regen:0,
+      dashCharges:1, iframe:0.4, doubleJump:false, airCtrl:0,
+      allyDmg:1, maxAllies:1, gold:1, xp:1, poison:false,
+    };
+    // skills
+    SKILL_TREE.forEach(tier=>tier.nodes.forEach(node=>{
+      const rank = this.skills[node.id]||0;
+      for(let i=0;i<rank;i++) node.apply(this);
+    }));
+    // relics
+    this.relics.forEach(id=>{ const r=RELICS.find(x=>x.id===id); if(r) r.apply(this); });
+    // derive max stats from form * level scaling
+    const lvScale = 1 + (this.level-1)*0.08;
+    this.maxHp = Math.round(this.form.hp * b.hpMul * lvScale);
+    this.maxStamina = Math.round(100 * b.stMul);
+    this.maxInstinct = 100;
+    if (this.hp===undefined) this.hp=this.maxHp;
+    this.hp = Math.min(this.hp??this.maxHp, this.maxHp);
+  }
+
+  get speed(){ return this.form.speed * this.bonus.spdMul * (this.buffs.spd?this.buffs.spd.mul:1); }
+  get atkDamage(){
+    let base = this.form.atkDmg * this.bonus.dmgMul * (1 + (this.level-1)*0.06);
+    if (this.buffs.atk) base *= this.buffs.atk.mul;
+    base *= 1 + Math.min(this.combo,10)*0.04*this.bonus.comboMul;
+    return base;
+  }
+
+  transform(formId, silent){
+    if (!this.unlocked[formId] && !silent) return;
+    const f = FORMS[formId];
+    this.form = f;
+    // build/cache model
+    if (this.parts){ this.group.remove(this.parts.group); }
+    if (!this.modelCache[formId]){
+      this.modelCache[formId] = buildCreature(formId, f.color, f.accent, f.scale);
+    }
+    this.parts = this.modelCache[formId];
+    this.group.add(this.parts.group);
+    if (!silent){
+      Sound.sfx.transform();
+      spawnTransformFX(this.pos, f.color);
+      GAME.shake = Math.max(GAME.shake, 0.5);
+      banner(f.emoji+' '+f.name, f.type, 1.0);
+      toast(`<b>${f.name}</b> に変身`);
+    }
+    this.recompute();
+    updateFormUI();
+    updateSkillBarUI();
+  }
+
+  addXp(n){
+    n = Math.round(n * this.bonus.xp);
+    this.xp += n;
+    while (this.xp >= this.xpNext){
+      this.xp -= this.xpNext;
+      this.level++;
+      this.sp += 1;
+      this.xpNext = Math.round(this.xpNext * 1.35 + 40);
+      this.recompute();
+      this.hp = this.maxHp; this.stamina=this.maxStamina;
+      Sound.sfx.levelup();
+      spawnLevelUpFX(this.pos);
+      banner('LEVEL '+this.level, 'スキルポイント +1', 0.9);
+      toast(`<b>レベルアップ!</b> Lv.${this.level} — スキルP +1`);
+    }
+    updateBarsUI();
+  }
+
+  addGold(n){ this.gold += Math.round(n*this.bonus.gold); updateBarsUI(); }
+  heal(n){ this.hp = Math.min(this.maxHp, this.hp+n); spawnFloater(this.pos, '+'+Math.round(n), 'heal'); updateBarsUI(); }
+  addItem(id,n=1){ this.inventory[id]=(this.inventory[id]||0)+n; }
+
+  buff(type, mul, dur){ this.buffs[type]={mul, t:dur}; toast(`強化: ${type} x${mul}`); }
+
+  takeDamage(n, fromPos){
+    if (this.invuln>0 || this.iframeT>0) return;
+    n = Math.max(1, Math.round(n * (1 - Math.min(0.7, this.bonus.defMul-1+0.0)) )); // defMul: bonus over 1 reduces
+    // defMul accumulates as +x → reduce by x
+    const reduce = Math.min(0.7, (this.bonus.defMul-1));
+    n = Math.max(1, Math.round(n*(1-reduce)));
+    this.hp -= n;
+    this.invuln = 0.4;
+    GAME.shake = Math.max(GAME.shake, clamp(n/30,0.2,0.9));
+    Sound.sfx.hurt();
+    hurtFlash();
+    spawnFloater(this.pos, '-'+n, 'player');
+    // knockback
+    if (fromPos){
+      const dir = _tmpV.copy(this.pos).sub(fromPos); dir.y=0; dir.normalize();
+      this.vel.addScaledVector(dir, 6);
+    }
+    updateBarsUI();
+    if (this.hp<=0){ this.hp=0; onPlayerDeath(); }
+  }
+
+  update(dt){
+    const f = this.form;
+    // ---- timers ----
+    this.atkCdT = Math.max(0, this.atkCdT-dt);
+    this.skillCdT = Math.max(0, this.skillCdT-dt);
+    this.dashCdT = Math.max(0, this.dashCdT-dt);
+    this.iframeT = Math.max(0, this.iframeT-dt);
+    this.invuln = Math.max(0, this.invuln-dt);
+    this.comboT = Math.max(0, this.comboT-dt);
+    this.attackAnimT = Math.max(0, this.attackAnimT-dt);
+    if (this.comboT<=0) this.combo=0;
+    for (const k in this.buffs){ this.buffs[k].t-=dt; if(this.buffs[k].t<=0) delete this.buffs[k]; }
+
+    // regen out of combat-ish
+    if (this.bonus.regen>0 && this.hp<this.maxHp) this.hp = Math.min(this.maxHp, this.hp + this.bonus.regen*dt);
+    this.stamina = Math.min(this.maxStamina, this.stamina + 18*this.bonus.stRegen*dt);
+
+    // ---- movement input (camera-relative) ----
+    let ix=0, iz=0;
+    // keyboard — REQUESTED REVERSALS: W=後退(back), D=左(left). So:
+    //   W (forward key) -> move backward; S -> forward
+    //   A (left key) -> right ; D -> left
+    if (Input.keys['w']||Input.keys['arrowup'])   iz += 1;  // reversed: w = backward
+    if (Input.keys['s']||Input.keys['arrowdown']) iz -= 1;  // s = forward
+    if (Input.keys['a']||Input.keys['arrowleft']) ix += 1;  // reversed: a = right
+    if (Input.keys['d']||Input.keys['arrowright'])ix -= 1;  // d = left
+    // joystick (also apply same reversal so it's consistent)
+    if (Input.moveX||Input.moveZ){ ix += -Input.moveX; iz += Input.moveZ; }
+    const il = Math.hypot(ix,iz);
+    if (il>1){ ix/=il; iz/=il; }
+    const moving = il>0.08;
+
+    // camera basis
+    const camYaw = Input.yaw;
+    const fwd = _tmpV.set(Math.sin(camYaw), 0, Math.cos(camYaw)); // forward into screen (-z when yaw 0? we use +)
+    const right = _tmpV2.set(Math.cos(camYaw), 0, -Math.sin(camYaw));
+    // desired horizontal velocity
+    const desired = _tmpV3.set(0,0,0);
+    desired.addScaledVector(fwd, iz);
+    desired.addScaledVector(right, ix);
+    if (desired.lengthSq()>0) desired.normalize();
+    const spd = this.speed * (Input.keys['shift']&&moving?1.0:1.0);
+    desired.multiplyScalar(spd);
+
+    // accel toward desired (smoother)
+    const accel = this.grounded ? 14 : 8*(0.4+this.bonus.airCtrl);
+    this.vel.x = lerp(this.vel.x, desired.x, clamp(accel*dt,0,1));
+    this.vel.z = lerp(this.vel.z, desired.z, clamp(accel*dt,0,1));
+
+    // ---- dash ----
+    const maxDash = 1 + this.bonus.dashCharges - 1;
+    if (Input.consume('dash') && this.dashCdT<=0 && this.stamina>=20){
+      const dir = (desired.lengthSq()>0.01) ? desired.clone().normalize()
+                 : _tmpV.set(Math.sin(this.facing),0,Math.cos(this.facing));
+      this.vel.x = dir.x * spd*2.6;
+      this.vel.z = dir.z * spd*2.6;
+      this.dashCdT = 0.9;
+      this.iframeT = this.bonus.iframe;
+      this.stamina -= 20;
+      Sound.sfx.dash();
+      spawnDashFX(this.pos, dir);
+    }
+
+    // ---- jump / fly ----
+    if (f.canFly){
+      // eagle: space=ascend, ctrl/c=descend
+      let vy=0;
+      if (Input.keys[' ']) vy += 1;
+      if (Input.keys['control']||Input.keys['c']) vy -= 1;
+      this.flyVel = lerp(this.flyVel, vy*8, clamp(8*dt,0,1));
+      this.height += this.flyVel*dt;
+      this.height = clamp(this.height, 0, 40);
+      this.grounded = this.height<=0.05;
+      if (Input.consume('jump')){ Sound.sfx.jump(); }
+    } else {
+      if (Input.consume('jump')){
+        if (this.grounded){ this.vel.y = f.jump; this.grounded=false; this.jumpCount=1; Sound.sfx.jump(); spawnJumpDust(this.pos); }
+        else if (this.bonus.doubleJump && this.jumpCount<2){ this.vel.y = f.jump*0.9; this.jumpCount=2; Sound.sfx.jump(); spawnJumpDust(this.pos);}
+      }
+      // gravity
+      this.vel.y -= 26*dt;
+      this.height += this.vel.y*dt;
+      if (this.height<=0){ this.height=0; this.vel.y=0; if(!this.grounded){ this.grounded=true; this.jumpCount=0; } }
+      else this.grounded=false;
+    }
+
+    // ---- integrate position w/ collision ----
+    const nx = this.pos.x + this.vel.x*dt;
+    const nz = this.pos.z + this.vel.z*dt;
+    if (!collideProps(nx, this.pos.z, 0.8)) this.pos.x = nx; else this.vel.x*=-0.2;
+    if (!collideProps(this.pos.x, nz, 0.8)) this.pos.z = nz; else this.vel.z*=-0.2;
+    // world bounds
+    const bound = WORLD_SIZE*0.5;
+    this.pos.x = clamp(this.pos.x, -bound, bound);
+    this.pos.z = clamp(this.pos.z, -bound, bound);
+
+    // place on terrain
+    const groundY = terrainHeight(this.pos.x, this.pos.z);
+    this.pos.y = groundY + this.height;
+    this.group.position.copy(this.pos);
+
+    // ---- facing / lock-on ----
+    if (GAME.target && GAME.target.alive){
+      const ang = Math.atan2(GAME.target.pos.x-this.pos.x, GAME.target.pos.z-this.pos.z);
+      this.facing = approachAngle(this.facing, ang, 12*dt);
+    } else if (moving){
+      const mAng = Math.atan2(this.vel.x, this.vel.z);
+      this.facing = approachAngle(this.facing, mAng, 14*dt);
+    }
+    this.group.rotation.y = this.facing;
+
+    // ---- attack ----
+    const wantAttack = Input.consume('attack') || (Input.mouseDown && this.atkCdT<=0);
+    if (wantAttack && this.atkCdT<=0){ this.attack(); }
+    // ---- skill ----
+    if (Input.consume('skill') && this.skillCdT<=0){ this.useSkill(); }
+    // ---- instinct (E) ----
+    if (Input.consume('instinct')){ this.useInstinct(); }
+    // ---- lock-on toggle ----
+    if (Input.consume('lock')){ toggleLockOn(); }
+    // ---- form switch ----
+    FORM_ORDER.forEach(fid=>{
+      if (Input.consume('form'+FORMS[fid].key)){
+        if (this.unlocked[fid]) this.transform(fid);
+        else toast('まだ '+FORMS[fid].name+' に変身できない');
+      }
+    });
+    // ---- interact (F) ----
+    if (Input.consume('interact')) tryInteract();
+
+    // instinct passive: gain by "form-appropriate" action
+    this.gainInstinct(dt, moving);
+
+    // ---- animate model ----
+    const sp01 = clamp(Math.hypot(this.vel.x,this.vel.z)/(this.speed+0.01),0,1);
+    animateCreature(this.parts, GAME.time, this.attackAnimT>0?1:sp01, this.grounded, f.canFly&&this.height>0.2);
+    // attack lunge anim
+    if (this.attackAnimT>0){
+      const t = 1-this.attackAnimT/0.18;
+      this.parts.group.position.z = Math.sin(t*Math.PI)*0.5;
+    } else this.parts.group.position.z = 0;
+    // banking when fly
+    if (f.canFly) this.parts.group.rotation.z = -this.vel.x*0.03;
+
+    updateBarsUI();
+  }
+
+  gainInstinct(dt, moving){
+    let g = 4*this.bonus.inRegen; // base trickle
+    const f=this.form;
+    // form-specific bonus
+    if (f.id==='mouse' && this.nearGrass()) g += 14;     // hide in grass
+    if (f.id==='eagle' && this.height>8) g += 12;        // soar high
+    if (f.id==='fox' && moving) g += 6;                  // keep moving
+    if (f.id==='snake' && !moving) g += 10;              // ambush still
+    if (f.id==='wolf' && this.allies.length>0) g += 8;   // pack
+    this.instinct = Math.min(this.maxInstinct, this.instinct + g*dt);
+  }
+  nearGrass(){ return GAME.grassMesh && this.grounded; }
+
+  attack(){
+    const f=this.form;
+    this.atkCdT = f.atkCd * this.bonus.cdMul*0.6 + f.atkCd*0.4;
+    this.attackAnimT = 0.18;
+    this.combo++; this.comboT = 1.1;
+    if (this.combo>1) showCombo(this.combo);
+    Sound.sfx.swing();
+    // aim direction: lock target or camera yaw, with pitch for ranged
+    const aimYaw = GAME.target&&GAME.target.alive
+      ? Math.atan2(GAME.target.pos.x-this.pos.x, GAME.target.pos.z-this.pos.z)
+      : Input.yaw;
+    if (f.id==='snake'){
+      // ranged form basic = quick bite still, but also fire small fang
+      meleeHit(this, aimYaw, f.atkRange, f.atkArc, this.atkDamage*0.7);
+      fireProjectile(this, aimYaw, 0, 'fang', this.atkDamage*0.5, 22, 0x8ac46a);
+    } else if (f.id==='human'){
+      meleeHit(this, aimYaw, f.atkRange, f.atkArc, this.atkDamage);
+    } else {
+      meleeHit(this, aimYaw, f.atkRange, f.atkArc, this.atkDamage);
+    }
+    spawnSwingFX(this, aimYaw);
+  }
+
+  useSkill(){
+    const f=this.form, sk=f.skill;
+    const cost = 25;
+    if (this.instinct < cost){ toast('本能が足りない'); return; }
+    this.instinct -= cost;
+    this.skillCdT = sk.cd*this.bonus.cdMul;
+    const aimYaw = GAME.target&&GAME.target.alive
+      ? Math.atan2(GAME.target.pos.x-this.pos.x, GAME.target.pos.z-this.pos.z)
+      : Input.yaw;
+    Sound.sfx.swing();
+    switch(sk.kind){
+      case 'dash':{
+        const dir=_tmpV.set(Math.sin(aimYaw),0,Math.cos(aimYaw));
+        this.vel.x=dir.x*this.speed*3.2; this.vel.z=dir.z*this.speed*3.2;
+        this.iframeT=0.3;
+        meleeHit(this, aimYaw, 2.6, 1.6, this.atkDamage*1.6);
+        spawnDashFX(this.pos,dir); Sound.sfx.dash();
+        break; }
+      case 'spin':{
+        for(let i=0;i<3;i++) setTimeout(()=>{ if(GAME.state==='playing') meleeHit(this, aimYaw, 3.2, Math.PI, this.atkDamage*0.8); spawnRingFX(this.pos,0xe88a44); }, i*120);
+        GAME.shake=Math.max(GAME.shake,0.5);
+        break; }
+      case 'venom':{
+        for(let i=-1;i<=1;i++) fireProjectile(this, aimYaw+i*0.18, 0, 'venom', this.atkDamage*1.1, 26, 0x8ac46a, true);
+        Sound.sfx.shoot();
+        break; }
+      case 'dive':{
+        if (this.height>2){
+          this.flyVel=-30; // slam down
+          this.diveAttack=true;
+          toast('急降下強襲!');
+        } else {
+          // leap then slam
+          this.height=8; this.flyVel=0; this.diveQueued=true;
+        }
+        break; }
+      case 'howl':{
+        Sound.sfx.howl(); spawnRingFX(this.pos,0xb0b0c0, 8);
+        GAME.shake=Math.max(GAME.shake,0.8);
+        GAME.enemies.forEach(e=>{ if(e.alive && dist2(e.pos.x,e.pos.z,this.pos.x,this.pos.z)<64){ e.takeDamage(this.atkDamage*1.5,this.pos); e.stun(1.2); } });
+        // rally allies
+        this.allies.forEach(a=>a.rally&&a.rally());
+        break; }
+      case 'spear':{
+        fireProjectile(this, aimYaw, Input.pitch*0.4, 'spear', this.atkDamage*2.2, 34, 0xe0c0a0);
+        Sound.sfx.shoot();
+        break; }
+    }
+    updateSkillBarUI();
+  }
+
+  useInstinct(){
+    // E: sense mode toggle + small heal/utility per form
+    SenseMode.toggle();
+    if (this.form.id==='wolf'){ // wolf howl heal
+      this.heal(this.maxHp*0.08);
+    }
+  }
+}
+
+function collideProps(x,z,r){
+  for (const p of GAME.props){
+    if (!p.solid) continue;
+    if (dist2(x,z,p.x,p.z) < (p.r+r)*(p.r+r)) return true;
+  }
+  return false;
+}
 </script>
 </body>
 </html>
