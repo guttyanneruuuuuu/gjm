@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <title>Inverse Hunter - 3D Action RPG</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      -webkit-user-select: none;
+      user-select: none;
+    }
+
+    html, body {
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      font-family: 'Arial', sans-serif;
+      background: #000;
+      touch-action: none;
+    }
+
+    #game {
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
+
+    canvas {
+      display: block;
+      width: 100%;
+      height: 100%;
+    }
+
+    /* Loader */
+    #loader {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(135deg, #0a0e27 0%, #1a1a3e 100%);
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      z-index: 1000;
+      color: #fff;
+      font-size: 20px;
+    }
+
+    #loader.hidden {
+      display: none;
+      pointer-events: none;
+    }
+
+    #loader h1 {
+      margin-bottom: 30px;
+      font-size: 48px;
+      text-shadow: 0 0 30px rgba(255, 255, 0, 0.6);
+      animation: pulse 2s ease-in-out infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.7; }
+    }
+
+    #loader-progress {
+      width: 300px;
+      height: 20px;
+      background: rgba(255, 255, 255, 0.1);
+      border: 2px solid #fff;
+      border-radius: 10px;
+      overflow: hidden;
+      margin-bottom: 20px;
+      box-shadow: 0 0 20px rgba(255, 255, 0, 0.3);
+    }
+
+    #loader-bar {
+      height: 100%;
+      background: linear-gradient(90deg, #ffff00, #ff6b6b, #6b9bff);
+      width: 0%;
+      transition: width 0.2s ease;
+      box-shadow: 0 0 10px rgba(255, 255, 0, 0.5);
+    }
+
+    #loader-text {
+      font-size: 16px;
+      margin-bottom: 10px;
+    }
+
+    #loader-tip {
+      margin-top: 20px;
+      font-size: 14px;
+      color: #aaa;
+      text-align: center;
+      max-width: 400px;
+      line-height: 1.6;
+    }
+
+    /* HUD */
+    #hud {
+      font-family: 'Arial', sans-serif;
+      pointer-events: none;
+    }
+
+    /* Animations */
+    @keyframes fadeInOut {
+      0% {
+        opacity: 0;
+        transform: translate(-50%, -50%) scale(0.8);
+      }
+      50% {
+        opacity: 1;
+        transform: translate(-50%, -50%) scale(1);
+      }
+      100% {
+        opacity: 0;
+        transform: translate(-50%, -50%) scale(0.8);
+      }
+    }
+
+    /* Mobile responsive */
+    @media (max-width: 768px) {
+      #loader h1 {
+        font-size: 36px;
+      }
+
+      #loader-progress {
+        width: 250px;
+      }
+
+      #loader-tip {
+        font-size: 12px;
+        max-width: 300px;
+      }
+    }
+
+    /* Performance optimizations */
+    body {
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+    }
+
+    /* Prevent scrolling */
+    html {
+      overflow: hidden;
+      position: fixed;
+      width: 100%;
+      height: 100%;
+    }
+
+    /* Debug info */
+    #debug-info {
+      position: fixed;
+      top: 10px;
+      left: 10px;
+      background: rgba(0, 0, 0, 0.7);
+      color: #0f0;
+      font-family: 'Courier New', monospace;
+      font-size: 12px;
+      padding: 10px;
+      border-radius: 4px;
+      z-index: 999;
+      display: none;
+      max-width: 300px;
+      line-height: 1.4;
+    }
+
+    #debug-info.show {
+      display: block;
+    }
+  </style>
+</head>
+<body>
+  <div id="game"></div>
+
+  <div id="loader">
+    <h1>🐭 Inverse Hunter</h1>
+    <div id="loader-progress">
+      <div id="loader-bar"></div>
+    </div>
+    <div id="loader-text">Loading...</div>
+    <div id="loader-tip">
+      食物連鎖を逆走する、生存と革命の3Dアクション<br>
+      An action RPG where the weak become strong
+    </div>
+  </div>
+
+  <div id="debug-info"></div>
+
+  <script type="module">
+    // Performance monitoring
+    const startTime = performance.now();
+    let frameCount = 0;
+    let fps = 0;
+    let lastFpsTime = startTime;
+
+    // Simulate loading progress
+    let progress = 0;
+    const progressInterval = setInterval(() => {
+      progress += Math.random() * 25;
+      if (progress > 95) progress = 95;
+      document.getElementById('loader-bar').style.width = progress + '%';
+      document.getElementById('loader-text').textContent = `Loading... ${Math.round(progress)}%`;
+    }, 300);
+
+    // Error handling
+    window.addEventListener('error', (e) => {
+      console.error('Error:', e.error);
+      document.getElementById('loader-text').textContent = 'Error loading game';
+      document.getElementById('loader-tip').textContent = e.error?.message || 'Unknown error';
+    });
+
+    window.addEventListener('unhandledrejection', (e) => {
+      console.error('Unhandled rejection:', e.reason);
+      document.getElementById('loader-text').textContent = 'Error loading game';
+      document.getElementById('loader-tip').textContent = e.reason?.message || 'Unknown error';
+    });
+
+    // Import and start game
+    try {
+      // Dynamically import the game
+      const gameModule = await import('./src/mainV2.js');
+
+      // Complete loading
+      progress = 100;
+      document.getElementById('loader-bar').style.width = '100%';
+      document.getElementById('loader-text').textContent = 'Ready!';
+      clearInterval(progressInterval);
+
+      // Hide loader
+      setTimeout(() => {
+        document.getElementById('loader').classList.add('hidden');
+
+        // Setup debug info (toggle with D key)
+        document.addEventListener('keydown', (e) => {
+          if (e.key === 'd' || e.key === 'D') {
+            document.getElementById('debug-info').classList.toggle('show');
+          }
+        });
+
+        // Update debug info every frame
+        const debugInfo = document.getElementById('debug-info');
+        setInterval(() => {
+          frameCount++;
+          const currentTime = performance.now();
+          if (currentTime - lastFpsTime >= 1000) {
+            fps = frameCount;
+            frameCount = 0;
+            lastFpsTime = currentTime;
+          }
+
+          const uptime = ((currentTime - startTime) / 1000).toFixed(1);
+          debugInfo.innerHTML = `
+            FPS: ${fps}<br>
+            Uptime: ${uptime}s<br>
+            Memory: ${(performance.memory?.usedJSHeapSize / 1048576).toFixed(1)}MB<br>
+            Press D to toggle debug
+          `;
+        }, 100);
+      }, 500);
+    } catch (error) {
+      console.error('Failed to load game:', error);
+      document.getElementById('loader-text').textContent = 'Failed to load game';
+      document.getElementById('loader-tip').textContent = error.message;
+      clearInterval(progressInterval);
+    }
+  </script>
+</body>
+</html>
