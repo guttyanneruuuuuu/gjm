@@ -4,6 +4,9 @@
 
 import * as THREE from 'three';
 import { clamp, lerp, TAU } from '../core/utils.js';
+import { TransformationSystem } from './TransformationSystem.js';
+import { CombatSystem } from './CombatSystem.js';
+import { InstinctGauge } from './InstinctGauge.js';
 
 export class Player {
   constructor(engine, startPos = { x: 0, y: 5, z: 0 }) {
@@ -56,6 +59,11 @@ export class Player {
     // Add to physics
     this.physicsBody = this.physics.createBody(this.position, 1, 0.5);
 
+    // Initialize systems
+    this.transformationSystem = new TransformationSystem(this);
+    this.combatSystem = new CombatSystem(this, this.scene);
+    this.instinctGauge = new InstinctGauge(this);
+
     // Register with engine
     this.engine.onUpdate((dt) => this.update(dt));
   }
@@ -93,6 +101,9 @@ export class Player {
    * Update player each frame
    */
   update(dt) {
+    // Update systems
+    this.instinctGauge.update(dt);
+    this.combatSystem.update(dt);
     // Get input
     const movement = this.input.getMovementInput();
     const camYaw = this.input.yaw;
@@ -147,21 +158,35 @@ export class Player {
     }
 
     // Handle form switching
-    if (this.input.isKeyPressed('1')) this.switchForm('mouse');
-    if (this.input.isKeyPressed('2')) this.switchForm('fox');
-    if (this.input.isKeyPressed('3')) this.switchForm('snake');
-    if (this.input.isKeyPressed('4')) this.switchForm('eagle');
-    if (this.input.isKeyPressed('5')) this.switchForm('wolf');
+    if (this.input.isKeyPressed('1')) this.transformationSystem.transformTo('mouse');
+    if (this.input.isKeyPressed('2')) this.transformationSystem.transformTo('fox');
+    if (this.input.isKeyPressed('3')) this.transformationSystem.transformTo('snake');
+    if (this.input.isKeyPressed('4')) this.transformationSystem.transformTo('eagle');
+    if (this.input.isKeyPressed('5')) this.transformationSystem.transformTo('wolf');
+
+    // Handle lock-on
+    if (this.input.isLocking()) {
+      if (this.combatSystem.lockedTarget) {
+        this.combatSystem.unlockTarget();
+      } else {
+        const nearest = this.combatSystem.findNearestEnemy();
+        if (nearest) this.combatSystem.lockTarget(nearest);
+      }
+    }
 
     // Handle attacking
     if (this.input.isAttacking() && this.attackCooldown <= 0) {
-      this.attack();
+      this.combatSystem.attack('normal');
+      this.attackCooldown = 0.5;
     }
 
     this.attackCooldown -= dt;
 
     // Update stamina
     this.stamina = Math.min(this.maxStamina, this.stamina + 20 * dt);
+
+    // Update instinct from gauge
+    this.instinct = this.instinctGauge.instinct;
 
     // Update visuals
     this.updateVisuals();
@@ -195,21 +220,10 @@ export class Player {
   }
 
   /**
-   * Switch to a different form
+   * Switch to a different form (deprecated - use transformationSystem)
    */
   switchForm(formId) {
-    if (!this.unlockedForms.includes(formId)) {
-      console.log(`Form ${formId} not unlocked yet`);
-      return;
-    }
-
-    if (this.currentForm === formId) return;
-
-    this.currentForm = formId;
-    console.log(`Switched to ${this.forms[formId].name}`);
-
-    // Consume instinct
-    this.instinct = Math.max(0, this.instinct - 10);
+    this.transformationSystem.transformTo(formId);
   }
 
   /**
@@ -223,21 +237,22 @@ export class Player {
   }
 
   /**
-   * Perform attack
+   * Perform attack (deprecated - use combatSystem)
    */
   attack() {
-    this.attacking = true;
-    this.attackCooldown = 0.5;
-    console.log(`${this.forms[this.currentForm].name} attacks!`);
-
-    // TODO: Implement actual attack logic with damage, effects, etc.
+    this.combatSystem.attack('normal');
   }
 
   /**
    * Take damage
    */
-  takeDamage(amount) {
+  takeDamage(amount, isCrit = false) {
     this.hp = Math.max(0, this.hp - amount);
+    this.combatSystem.inCombat = true;
+    this.combatSystem.combatTimeout = 5;
+    this.instinctGauge.inCombat = true;
+    this.instinctGauge.combatTimeout = 5;
+    
     if (this.hp <= 0) {
       this.die();
     }
@@ -283,7 +298,32 @@ export class Player {
       maxStamina: this.maxStamina,
       instinct: this.instinct,
       maxInstinct: this.maxInstinct,
+      form: this.currentForm,
+      formName: this.forms[this.currentForm].name,
+      combo: this.combatSystem.comboCounter,
+      targetLocked: this.combatSystem.lockedTarget !== null,
     };
+  }
+
+  /**
+   * Get transformation system
+   */
+  getTransformationSystem() {
+    return this.transformationSystem;
+  }
+
+  /**
+   * Get combat system
+   */
+  getCombatSystem() {
+    return this.combatSystem;
+  }
+
+  /**
+   * Get instinct gauge
+   */
+  getInstinctGauge() {
+    return this.instinctGauge;
   }
 
   /**
